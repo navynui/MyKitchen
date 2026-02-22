@@ -475,9 +475,17 @@
                         items = items.filter(item => item.name.toLowerCase().includes(searchQuery.value.toLowerCase()));
                     }
                     return items.sort((a, b) => {
+                        // If no expiry, sort by most recent ID (newest first)
+                        if (!a.expiry && !b.expiry) return b.id - a.id;
                         if (!a.expiry) return 1;
                         if (!b.expiry) return -1;
-                        return new Date(a.expiry) - new Date(b.expiry)
+
+                        // Valid date compare
+                        const dateA = new Date(a.expiry);
+                        const dateB = new Date(b.expiry);
+                        if (isNaN(dateA)) return 1;
+                        if (isNaN(dateB)) return -1;
+                        return dateA - dateB;
                     });
                 });
 
@@ -549,18 +557,25 @@
                 const saveItem = () => {
                     if (!modalData.value.name) return alert('กรุณาใส่ชื่อสินค้า');
 
+                    const newItem = { ...modalData.value };
                     if (editingItem.value) {
                         const index = inventory.value.findIndex(i => i.id === editingItem.value.id);
-                        inventory.value[index] = { ...modalData.value };
+                        inventory.value[index] = newItem;
                     } else {
-                        inventory.value.push({
-                            ...modalData.value,
-                            id: Date.now().toString()
-                        });
+                        newItem.id = Date.now().toString();
+                        inventory.value.push(newItem);
+
+                        // UX Improvements:
+                        // 1. Switch to the category of the newly added item so the user sees it
+                        selectedCategory.value = newItem.category;
+                        // 2. Clear search query to make sure the item isn't filtered out
+                        searchQuery.value = '';
                     }
+
                     showItemModal.value = false;
                     syncData();
                     showToast('บันทึกสำเร็จแล้ว');
+                    refreshIcons(); // Force refresh icons for new items
                 };
 
                 const removeItem = (id) => {
