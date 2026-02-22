@@ -235,10 +235,9 @@
                     </button>
                 </div>
 
-                <!-- Search -->
                 <div class="relative">
                     <input v-model="searchQuery" type="text"
-                        placeholder="หาชื่อสินค้าใน {{ getCategoryLabel(selectedCategory) }}..."
+                        :placeholder="'หาชื่อสินค้าใน ' + getCategoryLabel(selectedCategory) + '...'"
                         class="w-full px-5 py-3 pr-10 rounded-2xl border-none shadow-sm focus:ring-2 focus:ring-sage placeholder-gray-400">
                     <i data-lucide="search" class="w-5 h-5 absolute right-4 top-3.5 text-gray-400"></i>
                 </div>
