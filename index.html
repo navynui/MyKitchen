@@ -425,6 +425,14 @@
                             placeholder="https://script.google.com/macros/s/.../exec">
                     </div>
 
+                    <div class="pt-4 border-t border-gray-100 mt-4">
+                        <button @click="fetchData(true)"
+                            class="w-full bg-gray-100 text-gray-700 py-3 rounded-2xl font-medium flex items-center justify-center gap-2 active:scale-95 transition-all">
+                            <i data-lucide="refresh-cw" class="w-4 h-4" :class="isLoading ? 'animate-spin' : ''"></i>
+                            {{ isLoading ? 'กำลังดึงข้อมูล...' : 'ดึงข้อมูลใหม่ตอนนี้' }}
+                        </button>
+                    </div>
+
                     <button @click="saveSettings"
                         class="w-full sage-bg text-white py-4 rounded-2xl font-bold shadow-lg mt-4">บันทึกและซิงค์</button>
                 </div>
@@ -650,18 +658,22 @@
                 };
 
                 // Sync logic
-                const fetchData = async () => {
+                const fetchData = async (force = false) => {
                     if (!settings.value.apiUrl) return;
                     isLoading.value = true;
                     try {
-                        const response = await fetch(settings.value.apiUrl);
+                        // Add cache buster to URL
+                        const url = settings.value.apiUrl + (settings.value.apiUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
+                        const response = await fetch(url);
                         const data = await response.json();
                         if (data.inventory) inventory.value = data.inventory;
                         if (data.shopping) shoppingList.value = data.shopping;
                         localStorage.setItem('myKitchen_inventory', JSON.stringify(inventory.value));
                         localStorage.setItem('myKitchen_shopping', JSON.stringify(shoppingList.value));
+                        if (force) showToast('ดึงข้อมูลล่าสุดแล้วค่ะ');
                     } catch (e) {
                         console.error("Fetch failed", e);
+                        if (force) alert('ไม่สามารถดึงข้อมูลได้ กรุณาตรวจสอบ URL หรือการตั้งค่า Apps Script');
                     } finally {
                         isLoading.value = false;
                         refreshIcons();
