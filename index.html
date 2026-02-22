@@ -296,20 +296,22 @@
 
                 <!-- Shopping Items -->
                 <div class="space-y-3">
-                    <div v-for="item in shoppingList" :key="item.id" class="card flex items-center p-4 transition-all"
-                        :class="item.status === 'done' ? 'opacity-50 grayscale' : ''">
-                        <button @click="toggleShoppingStatus(item)"
-                            class="flex-shrink-0 w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-colors"
-                            :class="item.status === 'done' ? 'sage-bg sage-border text-white' : 'border-gray-200'">
+                    <div v-for="item in shoppingList" :key="item.id"
+                        class="card flex items-center p-4 transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
+                        :class="item.status === 'done' ? 'bg-gray-50/50' : ''" @click="toggleShoppingStatus(item)">
+                        <div class="flex-shrink-0 w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-all"
+                            :class="item.status === 'done' ? 'sage-bg sage-border text-white shadow-sm' : 'border-gray-200 bg-white'">
                             <i v-if="item.status === 'done'" data-lucide="check" class="w-5 h-5"></i>
-                        </button>
-                        <div class="ml-4 flex-1" @click="toggleShoppingStatus(item)">
-                            <p class="font-medium"
-                                :class="item.status === 'done' ? 'line-through text-gray-500' : 'text-gray-800'">{{
-                                item.name }}</p>
+                        </div>
+                        <div class="ml-4 flex-1">
+                            <p class="font-medium transition-all"
+                                :class="item.status === 'done' ? 'line-through text-gray-400' : 'text-gray-800'">
+                                {{ item.name }}
+                            </p>
                             <p v-if="item.note" class="text-xs text-gray-400">{{ item.note }}</p>
                         </div>
-                        <button @click="removeShoppingItem(item.id)" class="p-2 text-gray-300 hover:text-red-400">
+                        <button @click.stop="removeShoppingItem(item.id)"
+                            class="p-2 text-gray-300 hover:text-red-400 active:scale-125 transition-transform">
                             <i data-lucide="x" class="w-5 h-5"></i>
                         </button>
                     </div>
