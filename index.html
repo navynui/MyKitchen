@@ -728,11 +728,17 @@
                     const savedShop = localStorage.getItem('myKitchen_shopping');
                     if (savedShop) shoppingList.value = JSON.parse(savedShop);
 
+                    const savedTab = localStorage.getItem('myKitchen_activeTab');
+                    if (savedTab) activeTab.value = savedTab;
+
                     fetchData();
                     refreshIcons();
                 });
 
-                watch(activeTab, () => refreshIcons());
+                watch(activeTab, (newTab) => {
+                    localStorage.setItem('myKitchen_activeTab', newTab);
+                    refreshIcons();
+                });
                 watch(selectedCategory, () => refreshIcons());
 
                 return {
