@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>My Kitchen (ครัวของฉัน)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Prompt -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- Vue 3 CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Heroicons for Tab Bar -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #FDFBF7;
+            /* Warm White */
+            color: #333;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .sage-bg {
+            background-color: #89a894;
+        }
+
+        .sage-text {
+            color: #89a894;
+        }
+
+        .sage-border {
+            border-color: #89a894;
+        }
+
+        .card {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .nav-item.active {
+            color: #89a894;
+        }
+
+        /* Mobile safe area for bottom nav */
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .bottom-nav {
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Hide scrollbar for category tabs */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        sage: {
+                            DEFAULT: '#89a894',
+                            light: '#a3bcad',
+                            dark: '#6d8a78',
+                        },
+                        warm: '#FDFBF7',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-warm min-h-screen">
+    <!--
+    ===========================================================================
+    MY KITCHEN (ครัวของฉัน) - README & SETUP INSTRUCTIONS
+    ===========================================================================
+    
+    Backend Setup (Google Sheets + Apps Script):
+    
+    1. สร้าง Google Sheet ใหม่ และตั้งชื่อว่า "MyKitchen_DB"
+    2. ตั้งชื่อ Sheet แรกว่า "Inventory" และใส่ Header ดังนี้:
+       A1: id, B1: category, C1: name, D1: quantity, E1: expiry
+    3. ตั้งชื่อ Sheet ที่สองว่า "Shopping" และใส่ Header ดังนี้:
+       A1: id, B1: name, C1: note, D1: status
+    
+    4. ที่แถบเมนู ไปที่ Extensions -> Apps Script
+    5. ลบโค้ดเดิมออกและวางโค้ด Apps Script ด้านล่างนี้:
+    
+    ---------------------------------------------------------------------------
+    // GOOGLE APPS SCRIPT CODE
+    function doGet(e) {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const inventorySheet = ss.getSheetByName("Inventory");
+      const shoppingSheet = ss.getSheetByName("Shopping");
+      
+      const inventory = inventorySheet.getDataRange().getValues().slice(1).map(r => ({
+        id: r[0], category: r[1], name: r[2], quantity: r[3], expiry: r[4] instanceof Date ? r[4].toISOString().split('T')[0] : r[4]
+      }));
+      
+      const shopping = shoppingSheet.getDataRange().getValues().slice(1).map(r => ({
+        id: r[0], name: r[1], note: r[2], status: r[3]
+      }));
+      
+      return ContentService.createTextOutput(JSON.stringify({ inventory, shopping }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    function doPost(e) {
+      const data = JSON.parse(e.postData.contents);
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const action = data.action;
+      
+      if (action === "updateInventory") {
+        const sheet = ss.getSheetByName("Inventory");
+        sheet.clearContents();
+        sheet.appendRow(["id", "category", "name", "quantity", "expiry"]);
+        data.items.forEach(item => {
+          sheet.appendRow([item.id, item.category, item.name, item.quantity, item.expiry]);
+        });
+      } else if (action === "updateShopping") {
+        const sheet = ss.getSheetByName("Shopping");
+        sheet.clearContents();
+        sheet.appendRow(["id", "name", "note", "status"]);
+        data.items.forEach(item => {
+          sheet.appendRow([item.id, item.name, item.note, item.status]);
+        });
+      }
+      
+      return ContentService.createTextOutput(JSON.stringify({ status: "success" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    ---------------------------------------------------------------------------
+    
+    6. กด Deploy -> New Deployment
+    7. เลือก Type: Web App
+    8. Description: My Kitchen API
+    9. Execute as: Me
+    10. Who has access: Anyone (เพื่อให้ App เข้าถึงได้)
+    11. คัดลอก "Web App URL" มาใส่ในช่องตั้งค่า (Settings) ภายในแอปนี้
+    
+    Deployment:
+    - อัปโหลดไฟล์ index.html นี้ขึ้น GitHub Repository และเปิดใช้งาน GitHub Pages
+    
+    ===========================================================================
+    -->
+
+    <div id="app" v-cloak class="max-w-md mx-auto relative pb-24 shadow-xl min-h-screen bg-white md:bg-warm">
+
+        <!-- Header -->
+        <header class="sage-bg text-white p-6 sticky top-0 z-10 rounded-b-3xl">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-semibold">ครัวของฉัน</h1>
+                    <p class="text-xs opacity-90">{{ currentTabLabel }}</p>
+                </div>
+                <button @click="openSettings" class="p-2 bg-white/20 rounded-full">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="p-4 pt-6">
+
+            <!-- Tab: Home (หน้าแรก) -->
+            <div v-if="activeTab === 'home'" class="space-y-6">
+                <!-- Expiry Alert Section -->
+                <section>
+                    <div class="flex items-center gap-2 mb-3">
+                        <i data-lucide="bell" class="w-5 h-5 text-red-500"></i>
+                        <h2 class="text-lg font-semibold text-gray-800">แจ้งเตือนใกล้หมดอายุ</h2>
+                    </div>
+                    <div v-if="expiringSoon.length > 0" class="space-y-3">
+                        <div v-for="item in expiringSoon" :key="item.id"
+                            class="card p-4 border-l-4 border-red-500 flex justify-between items-center">
+                            <div>
+                                <p class="font-medium text-gray-900">{{ item.name }}</p>
+                                <p class="text-sm text-red-600">หมดอายุ: {{ formatDate(item.expiry) }}</p>
+                            </div>
+                            <span class="text-xs font-semibold px-2 py-1 bg-gray-100 rounded-full text-gray-600">{{
+                                getCategoryLabel(item.category) }}</span>
+                        </div>
+                    </div>
+                    <div v-else class="card p-8 text-center text-gray-500 border-2 border-dashed border-gray-200">
+                        <i data-lucide="check-circle" class="w-10 h-10 mx-auto mb-2 text-sage opacity-50"></i>
+                        <p>ไม่มีสินค้าที่ใกล้หมดอายุ</p>
+                    </div>
+                </section>
+
+                <!-- Low Stock Section -->
+                <section>
+                    <div class="flex items-center gap-2 mb-3">
+                        <i data-lucide="shopping-cart" class="w-5 h-5 text-orange-500"></i>
+                        <h2 class="text-lg font-semibold text-gray-800">สินค้าใกล้หมด</h2>
+                    </div>
+                    <div v-if="lowStockItems.length > 0" class="space-y-3">
+                        <div v-for="item in lowStockItems" :key="item.id"
+                            class="card p-4 border-l-4 border-orange-500 flex justify-between items-center">
+                            <div>
+                                <p class="font-medium text-gray-900">{{ item.name }}</p>
+                                <p class="text-sm text-gray-500">เหลือเพียง: {{ item.quantity }}</p>
+                            </div>
+                            <button @click="addToShoppingList(item.name)"
+                                class="sage-bg text-white px-3 py-1.5 rounded-xl text-sm font-medium">
+                                + รายการซื้อ
+                            </button>
+                        </div>
+                    </div>
+                    <div v-else class="card p-8 text-center text-gray-500 border-2 border-dashed border-gray-200">
+                        <p>คลังสินค้าของคุณดูดีมาก!</p>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Tab: Inventory (ระบบคลังสินค้า) -->
+            <div v-if="activeTab === 'inventory'" class="space-y-4">
+                <!-- Category Tabs -->
+                <div class="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+                    <button v-for="cat in categories" :key="cat.id" @click="selectedCategory = cat.id"
+                        :class="selectedCategory === cat.id ? 'sage-bg text-white shadow-lg' : 'bg-white text-gray-500 border border-gray-100'"
+                        class="px-5 py-2.5 rounded-2xl whitespace-nowrap text-sm font-medium transition-all">
+                        {{ cat.label }}
+                    </button>
+                </div>
+
+                <!-- Search -->
+                <div class="relative">
+                    <input v-model="searchQuery" type="text"
+                        placeholder="หาชื่อสินค้าใน {{ getCategoryLabel(selectedCategory) }}..."
+                        class="w-full px-5 py-3 pr-10 rounded-2xl border-none shadow-sm focus:ring-2 focus:ring-sage placeholder-gray-400">
+                    <i data-lucide="search" class="w-5 h-5 absolute right-4 top-3.5 text-gray-400"></i>
+                </div>
+
+                <!-- Item List -->
+                <div class="grid grid-cols-1 gap-3">
+                    <div v-for="item in filteredInventory" :key="item.id"
+                        class="card p-4 flex justify-between items-center animate-fadeIn">
+                        <div class="flex-1">
+                            <h3 class="font-semibold text-lg text-gray-800">{{ item.name }}</h3>
+                            <div class="flex gap-4 mt-1">
+                                <span class="text-xs text-gray-500 flex items-center gap-1">
+                                    <i data-lucide="package" class="w-3 h-3"></i> {{ item.quantity }}
+                                </span>
+                                <span class="text-xs flex items-center gap-1"
+                                    :class="isExpiring(item.expiry) ? 'text-red-500 font-medium' : 'text-gray-400'">
+                                    <i data-lucide="calendar" class="w-3 h-3"></i> {{ formatDate(item.expiry) }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button @click="editItem(item)" class="p-2 text-gray-400 hover:text-sage">
+                                <i data-lucide="edit-3" class="w-5 h-5"></i>
+                            </button>
+                            <button @click="addToShoppingList(item.name)" class="p-2 text-sage bg-sage/10 rounded-xl">
+                                <i data-lucide="shopping-cart" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add Button -->
+                <button @click="openAddItemModal"
+                    class="sage-bg text-white w-full py-4 rounded-2xl shadow-lg flex justify-center items-center gap-2 font-semibold text-lg hover:brightness-105 active:scale-95 transition-all">
+                    <i data-lucide="plus-circle" class="w-6 h-6"></i> เพิ่มสินค้าใหม่
+                </button>
+            </div>
+
+            <!-- Tab: Shopping List (รายการซื้อของ) -->
+            <div v-if="activeTab === 'shopping'" class="space-y-4">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-lg font-semibold text-gray-800">สิ่งที่ต้องซื้อ ({{ shoppingList.length }})</h2>
+                    <button v-if="shoppingList.length > 0" @click="clearBoughtItems"
+                        class="text-sm text-red-500 font-medium">ลบทึกที่ซื้อแล้ว</button>
+                </div>
+
+                <!-- Quick Add to Shopping -->
+                <div class="flex gap-2">
+                    <input v-model="newShoppingItem" @keyup.enter="addShoppingItem" type="text"
+                        placeholder="พิมพ์ชื่อของที่อยากซื้อ..."
+                        class="flex-1 px-5 py-3 rounded-2xl border-none shadow-sm focus:ring-2 focus:ring-sage">
+                    <button @click="addShoppingItem" class="sage-bg text-white p-3 rounded-2xl shadow-md">
+                        <i data-lucide="plus" class="w-6 h-6"></i>
+                    </button>
+                </div>
+
+                <!-- Shopping Items -->
+                <div class="space-y-3">
+                    <div v-for="item in shoppingList" :key="item.id" class="card flex items-center p-4 transition-all"
+                        :class="item.status === 'done' ? 'opacity-50 grayscale' : ''">
+                        <button @click="toggleShoppingStatus(item)"
+                            class="flex-shrink-0 w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-colors"
+                            :class="item.status === 'done' ? 'sage-bg sage-border text-white' : 'border-gray-200'">
+                            <i v-if="item.status === 'done'" data-lucide="check" class="w-5 h-5"></i>
+                        </button>
+                        <div class="ml-4 flex-1" @click="toggleShoppingStatus(item)">
+                            <p class="font-medium"
+                                :class="item.status === 'done' ? 'line-through text-gray-500' : 'text-gray-800'">{{
+                                item.name }}</p>
+                            <p v-if="item.note" class="text-xs text-gray-400">{{ item.note }}</p>
+                        </div>
+                        <button @click="removeShoppingItem(item.id)" class="p-2 text-gray-300 hover:text-red-400">
+                            <i data-lucide="x" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div v-if="shoppingList.length === 0"
+                    class="card p-12 text-center text-gray-400 border-2 border-dashed border-gray-200">
+                    <i data-lucide="shopping-bag" class="w-12 h-12 mx-auto mb-3 opacity-30"></i>
+                    <p>ยังไม่มีรายการซื้อของ</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- Bottom Navigation Bar -->
+        <nav
+            class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-100 flex justify-around p-3 pb-safe z-50 bottom-nav rounded-t-3xl">
+            <button @click="activeTab = 'home'" :class="activeTab === 'home' ? 'sage-text' : 'text-gray-400'"
+                class="flex flex-col items-center gap-1 transition-all">
+                <i data-lucide="home" class="w-6 h-6"></i>
+                <span class="text-[10px] font-medium">หน้าแรก</span>
+            </button>
+            <button @click="activeTab = 'inventory'" :class="activeTab === 'inventory' ? 'sage-text' : 'text-gray-400'"
+                class="flex flex-col items-center gap-1 transition-all">
+                <i data-lucide="refrigerator" class="w-6 h-6"></i>
+                <span class="text-[10px] font-medium">คลังสินค้า</span>
+            </button>
+            <button @click="activeTab = 'shopping'" :class="activeTab === 'shopping' ? 'sage-text' : 'text-gray-400'"
+                class="flex flex-col items-center gap-1 transition-all relative">
+                <i data-lucide="shopping-cart" class="w-6 h-6"></i>
+                <span v-if="shoppingCount > 0"
+                    class="absolute -top-1 right-2 bg-red-500 text-white text-[8px] font-bold w-4 h-4 rounded-full flex items-center justify-center">{{
+                    shoppingCount }}</span>
+                <span class="text-[10px] font-medium">ซื้อของ</span>
+            </button>
+        </nav>
+
+        <!-- Modals -->
+
+        <!-- Add/Edit Item Modal -->
+        <div v-if="showItemModal"
+            class="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm px-0">
+            <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 pb-12 sm:pb-8 animate-slideUp">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold">{{ editingItem ? 'แก้ไขสินค้า' : 'เพิ่มสินค้าใหม่' }}</h2>
+                    <button @click="showItemModal = false" class="p-2 bg-gray-100 rounded-full"><i data-lucide="x"
+                            class="w-5 h-5"></i></button>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-500 mb-1">หมวดหมู่</label>
+                        <div class="flex gap-2">
+                            <button v-for="cat in categories" :key="cat.id" @click="modalData.category = cat.id"
+                                :class="modalData.category === cat.id ? 'sage-bg text-white' : 'bg-gray-100 text-gray-600'"
+                                class="flex-1 py-3 rounded-xl text-sm font-medium transition-all">
+                                {{ cat.label }}
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-500 mb-1">ชื่อสินค้า</label>
+                        <input v-model="modalData.name" type="text"
+                            class="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-sage"
+                            placeholder="เช่น นมจืด, ไข่ไก่ 10 ฟอง">
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium text-gray-500 mb-1">จำนวน</label>
+                            <input v-model="modalData.quantity" type="text"
+                                class="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-sage text-center"
+                                placeholder="1">
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium text-gray-500 mb-1">วันหมดอายุ</label>
+                            <input v-model="modalData.expiry" type="date"
+                                class="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-sage">
+                        </div>
+                    </div>
+
+                    <button @click="saveItem"
+                        class="w-full sage-bg text-white py-4 rounded-2xl font-bold text-lg mt-4 shadow-lg shadow-sage/30">
+                        {{ editingItem ? 'บันทึกการแก้ไข' : 'เพิ่มสินค้า' }}
+                    </button>
+                    <button v-if="editingItem" @click="removeItem(editingItem.id)"
+                        class="w-full py-3 text-red-500 font-medium">ลบสินค้านี้</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Modal (Web App URL) -->
+        <div v-if="showSettingsModal"
+            class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold">ตั้งค่าการเชื่อมต่อ</h2>
+                    <button @click="showSettingsModal = false" class="p-2 bg-gray-100 rounded-full"><i data-lucide="x"
+                            class="w-5 h-5"></i></button>
+                </div>
+
+                <div class="space-y-4">
+                    <p class="text-sm text-gray-500">ใส่ Web App URL จาก Google Apps Script เพื่อซิงค์ข้อมูล</p>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Google Backend URL</label>
+                        <input v-model="settings.apiUrl" type="url"
+                            class="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-sage text-xs"
+                            placeholder="https://script.google.com/macros/s/.../exec">
+                    </div>
+
+                    <button @click="saveSettings"
+                        class="w-full sage-bg text-white py-4 rounded-2xl font-bold shadow-lg mt-4">บันทึกและซิงค์</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notification Toast -->
+        <div v-if="toast.show"
+            class="fixed top-20 left-1/2 -translate-x-1/2 z-[200] sage-bg text-white px-6 py-3 rounded-full shadow-2xl animate-fadeDown flex items-center gap-2 font-medium">
+            <i data-lucide="check-circle" class="w-5 h-5"></i> {{ toast.message }}
+        </div>
+
+    </div>
+
+    <script shadow>
+        const { createApp, ref, computed, onMounted, watch } = Vue;
+
+        createApp({
+            setup() {
+                // State
+                const activeTab = ref('home');
+                const selectedCategory = ref('fridge');
+                const searchQuery = ref('');
+                const inventory = ref([]);
+                const shoppingList = ref([]);
+                const settings = ref({ apiUrl: '' });
+                const isLoading = ref(false);
+
+                const toast = ref({ show: false, message: '' });
+
+                // UI State
+                const showItemModal = ref(false);
+                const showSettingsModal = ref(false);
+                const editingItem = ref(null);
+                const modalData = ref({ category: 'fridge', name: '', quantity: '', expiry: '' });
+                const newShoppingItem = ref('');
+
+                const categories = [
+                    { id: 'fridge', label: 'ตู้เย็น' },
+                    { id: 'freezer', label: 'ตู้แช่แข็ง' },
+                    { id: 'store', label: 'ชั้นเก็บของ' }
+                ];
+
+                // Computed
+                const currentTabLabel = computed(() => {
+                    const labels = { home: 'ยินดีต้อนรับแม่จ๋า', inventory: 'เช็คของในครัว', shopping: 'ของต้องซื้อ' };
+                    return labels[activeTab.value];
+                });
+
+                const filteredInventory = computed(() => {
+                    let items = inventory.value.filter(item => item.category === selectedCategory.value);
+                    if (searchQuery.value) {
+                        items = items.filter(item => item.name.toLowerCase().includes(searchQuery.value.toLowerCase()));
+                    }
+                    return items.sort((a, b) => {
+                        if (!a.expiry) return 1;
+                        if (!b.expiry) return -1;
+                        return new Date(a.expiry) - new Date(b.expiry)
+                    });
+                });
+
+                const expiringSoon = computed(() => {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const nextWeek = new Date();
+                    nextWeek.setDate(today.getDate() + 7);
+                    return inventory.value.filter(item => {
+                        if (!item.expiry) return false;
+                        const d = new Date(item.expiry);
+                        return d >= today && d <= nextWeek;
+                    }).sort((a, b) => new Date(a.expiry) - new Date(b.expiry));
+                });
+
+                const lowStockItems = computed(() => {
+                    return inventory.value.filter(item => {
+                        const q = String(item.quantity).toLowerCase();
+                        return q === '0' || q.includes('หมด') || q.includes('น้อย');
+                    });
+                });
+
+                const shoppingCount = computed(() => shoppingList.value.filter(i => i.status !== 'done').length);
+
+                // Methods
+                const refreshIcons = () => {
+                    setTimeout(() => {
+                        if (window.lucide) window.lucide.createIcons();
+                    }, 50);
+                };
+
+                const showToast = (msg) => {
+                    toast.value = { show: true, message: msg };
+                    setTimeout(() => toast.value.show = false, 3000);
+                };
+
+                const formatDate = (dateStr) => {
+                    if (!dateStr) return 'ไม่มีวันหมดอายุ';
+                    const date = new Date(dateStr);
+                    return date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
+                };
+
+                const isExpiring = (dateStr) => {
+                    if (!dateStr) return false;
+                    const d = new Date(dateStr);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const diff = (d - today) / (1000 * 60 * 60 * 24);
+                    return diff < 3;
+                };
+
+                const getCategoryLabel = (id) => categories.find(c => c.id === id)?.label || '';
+
+                // CRUD Operations
+                const openAddItemModal = () => {
+                    editingItem.value = null;
+                    modalData.value = { category: selectedCategory.value, name: '', quantity: '1', expiry: '' };
+                    showItemModal.value = true;
+                    refreshIcons();
+                };
+
+                const editItem = (item) => {
+                    editingItem.value = item;
+                    modalData.value = { ...item };
+                    showItemModal.value = true;
+                    refreshIcons();
+                };
+
+                const saveItem = () => {
+                    if (!modalData.value.name) return alert('กรุณาใส่ชื่อสินค้า');
+
+                    if (editingItem.value) {
+                        const index = inventory.value.findIndex(i => i.id === editingItem.value.id);
+                        inventory.value[index] = { ...modalData.value };
+                    } else {
+                        inventory.value.push({
+                            ...modalData.value,
+                            id: Date.now().toString()
+                        });
+                    }
+                    showItemModal.value = false;
+                    syncData();
+                    showToast('บันทึกสำเร็จแล้ว');
+                };
+
+                const removeItem = (id) => {
+                    if (confirm('ลบสินค้านี้ใช่ไหมคะ?')) {
+                        inventory.value = inventory.value.filter(i => i.id !== id);
+                        showItemModal.value = false;
+                        syncData();
+                        showToast('ลบสินค้าแล้ว');
+                    }
+                };
+
+                const addShoppingItem = () => {
+                    if (!newShoppingItem.value) return;
+                    shoppingList.value.unshift({
+                        id: Date.now().toString(),
+                        name: newShoppingItem.value,
+                        status: 'pending'
+                    });
+                    newShoppingItem.value = '';
+                    syncData();
+                    refreshIcons();
+                };
+
+                const addToShoppingList = (name) => {
+                    if (shoppingList.value.some(i => i.name === name)) {
+                        showToast('มีรายการนี้อยู่แล้วจ้า');
+                        return;
+                    }
+                    shoppingList.value.unshift({
+                        id: Date.now().toString(),
+                        name: name,
+                        status: 'pending'
+                    });
+                    activeTab.value = 'shopping';
+                    syncData();
+                    showToast('เพิ่มเข้าใบรายการแล้ว');
+                    refreshIcons();
+                };
+
+                const toggleShoppingStatus = (item) => {
+                    item.status = item.status === 'done' ? 'pending' : 'done';
+                    syncData();
+                    refreshIcons();
+                };
+
+                const removeShoppingItem = (id) => {
+                    shoppingList.value = shoppingList.value.filter(i => i.id !== id);
+                    syncData();
+                };
+
+                const clearBoughtItems = () => {
+                    shoppingList.value = shoppingList.value.filter(i => i.status !== 'done');
+                    syncData();
+                };
+
+                // Settings
+                const openSettings = () => {
+                    showSettingsModal.value = true;
+                    refreshIcons();
+                };
+
+                const saveSettings = () => {
+                    localStorage.setItem('myKitchen_settings', JSON.stringify(settings.value));
+                    showSettingsModal.value = false;
+                    fetchData();
+                    showToast('บันทึกการตั้งค่าแล้ว');
+                };
+
+                // Sync logic
+                const fetchData = async () => {
+                    if (!settings.value.apiUrl) return;
+                    isLoading.value = true;
+                    try {
+                        const response = await fetch(settings.value.apiUrl);
+                        const data = await response.json();
+                        if (data.inventory) inventory.value = data.inventory;
+                        if (data.shopping) shoppingList.value = data.shopping;
+                        localStorage.setItem('myKitchen_inventory', JSON.stringify(inventory.value));
+                        localStorage.setItem('myKitchen_shopping', JSON.stringify(shoppingList.value));
+                    } catch (e) {
+                        console.error("Fetch failed", e);
+                    } finally {
+                        isLoading.value = false;
+                        refreshIcons();
+                    }
+                };
+
+                const syncData = async () => {
+                    localStorage.setItem('myKitchen_inventory', JSON.stringify(inventory.value));
+                    localStorage.setItem('myKitchen_shopping', JSON.stringify(shoppingList.value));
+
+                    if (!settings.value.apiUrl) return;
+
+                    try {
+                        await fetch(settings.value.apiUrl, {
+                            method: 'POST',
+                            mode: 'no-cors',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'updateInventory', items: inventory.value })
+                        });
+
+                        await fetch(settings.value.apiUrl, {
+                            method: 'POST',
+                            mode: 'no-cors',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'updateShopping', items: shoppingList.value })
+                        });
+                    } catch (e) {
+                        console.error("Sync failed", e);
+                    }
+                };
+
+                // Lifecycle
+                onMounted(() => {
+                    const savedSettings = localStorage.getItem('myKitchen_settings');
+                    if (savedSettings) settings.value = JSON.parse(savedSettings);
+
+                    const savedInv = localStorage.getItem('myKitchen_inventory');
+                    if (savedInv) inventory.value = JSON.parse(savedInv);
+
+                    const savedShop = localStorage.getItem('myKitchen_shopping');
+                    if (savedShop) shoppingList.value = JSON.parse(savedShop);
+
+                    fetchData();
+                    refreshIcons();
+                });
+
+                watch(activeTab, () => refreshIcons());
+                watch(selectedCategory, () => refreshIcons());
+
+                return {
+                    activeTab, categories, selectedCategory, searchQuery, filteredInventory,
+                    expiringSoon, lowStockItems, shoppingList, shoppingCount,
+                    showItemModal, showSettingsModal, editingItem, modalData, newShoppingItem,
+                    currentTabLabel, settings, toast, isLoading,
+                    formatDate, getCategoryLabel, isExpiring,
+                    openAddItemModal, editItem, saveItem, removeItem,
+                    addShoppingItem, addToShoppingList, toggleShoppingStatus, removeShoppingItem, clearBoughtItems,
+                    openSettings, saveSettings
+                };
+            }
+        }).mount('#app');
+    </script>
+
+    <style>
+        [v-cloak] {
+            display: none;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeDown {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translate(-50%, 0);
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+            }
+
+            to {
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fadeIn {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+
+        .animate-fadeDown {
+            animation: fadeDown 0.3s ease-out forwards;
+        }
+
+        .animate-slideUp {
+            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+    </style>
+</body>
+
+</html>
