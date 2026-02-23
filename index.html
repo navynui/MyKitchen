@@ -724,6 +724,10 @@
                 const editItem = (item) => {
                     editingItem.value = item;
                     modalData.value = { ...item };
+                    // Ensure date is in YYYY-MM-DD format for <input type="date">
+                    if (modalData.value.expiry && modalData.value.expiry.includes('T')) {
+                        modalData.value.expiry = modalData.value.expiry.split('T')[0];
+                    }
                     if (!modalData.value.status) modalData.value.status = 'good';
                     showItemModal.value = true;
                 };
