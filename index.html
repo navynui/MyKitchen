@@ -11,8 +11,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     <!-- Vue 3 CDN -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <!-- Heroicons for Tab Bar -->
-    <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Favicon / Icon -->
     <link rel="icon" type="image/svg+xml" href="icon.svg">
     <link rel="apple-touch-icon" href="icon.svg">
@@ -576,9 +574,31 @@
                 const settings = ref({ apiUrl: '' });
                 const isListening = ref(false);
                 const isLoading = ref(false);
-                const isLucideReady = ref(!!window.lucide);
                 const lastSyncTime = ref('');
                 const toast = ref({ show: false, message: '' });
+
+                const ICONS = {
+                    'refresh-cw': '<path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/>',
+                    'settings': '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+                    'bell': '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+                    'check-circle': '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+                    'shopping-cart': '<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>',
+                    'search': '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
+                    'package': '<path d="M16.5 9.4 7.5 4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>',
+                    'calendar': '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+                    'edit-3': '<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>',
+                    'alert-triangle': '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+                    'x-circle': '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
+                    'plus-circle': '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>',
+                    'plus': '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+                    'check': '<polyline points="20 6 9 17 4 12"/>',
+                    'x': '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+                    'shopping-bag': '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>',
+                    'home': '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
+                    'shopping-basket': '<path d="M5 11V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7"/><path d="M2 11h20l-2 9H4l-2-9Z"/><circle cx="12" cy="15" r="3"/>',
+                    'mic': '<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>',
+                    'info': '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>'
+                };
 
                 // UI State
                 const showItemModal = ref(false);
@@ -646,29 +666,16 @@
 
                 // Methods
                 const renderIcon = (name, customClass = '') => {
-                    // Tell Vue to re-render icons when this value changes
-                    const _ready = isLucideReady.value;
-                    try {
-                        if (!window.lucide) return '';
-                        // Convert kebab-case to PascalCase (e.g. plus-circle -> PlusCircle)
-                        const pascalName = name.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('');
-                        const iconObj = window.lucide[pascalName] || (window.lucide.icons ? window.lucide.icons[name] : null);
-
-                        if (iconObj && typeof iconObj.toSvg === 'function') {
-                            return iconObj.toSvg({
-                                class: customClass,
-                                'stroke-width': 2.5
-                            });
-                        }
-                    } catch (e) {
-                        console.warn('Icon error:', name);
-                    }
-                    return '';
+                    const iconPath = ICONS[name] || '';
+                    return `
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" 
+                             stroke="currentColor" stroke-width="2.5" stroke-linecap="round" 
+                             stroke-linejoin="round" class="${customClass}">
+                            ${iconPath}
+                        </svg>
+                    `;
                 };
 
-                const refreshIcons = () => {
-                    // No longer needed as we use renderIcon
-                };
 
                 const showToast = (msg) => {
                     toast.value = { show: true, message: msg };
@@ -698,7 +705,6 @@
                     const defaultCat = selectedCategory.value === 'all' ? 'fridge' : selectedCategory.value;
                     modalData.value = { category: defaultCat, name: '', quantity: '1', unit: '', status: 'good', expiry: '' };
                     showItemModal.value = true;
-                    refreshIcons();
                 };
 
                 const editItem = (item) => {
@@ -706,7 +712,6 @@
                     modalData.value = { ...item };
                     if (!modalData.value.status) modalData.value.status = 'good';
                     showItemModal.value = true;
-                    refreshIcons();
                 };
 
                 const saveItem = () => {
@@ -750,7 +755,6 @@
                         } else {
                             item.status = 'good';
                             syncData();
-                            refreshIcons();
                         }
                         return;
                     }
@@ -760,7 +764,6 @@
                     item.status = flow[nextIndex];
 
                     syncData();
-                    refreshIcons();
                 };
 
                 const moveToShopping = (item) => {
@@ -788,7 +791,6 @@
                         inventory.value = inventory.value.filter(i => !lowIds.includes(i.id));
                         syncData();
                         showToast('ย้ายสำเร็จแล้วจ้า');
-                        refreshIcons();
                     }
                 };
 
@@ -801,7 +803,6 @@
                     });
                     newShoppingItem.value = '';
                     syncData();
-                    refreshIcons();
                 };
 
                 const addToShoppingList = (name) => {
@@ -817,13 +818,11 @@
                     activeTab.value = 'shopping';
                     syncData();
                     showToast('เพิ่มเข้าใบรายการแล้ว');
-                    refreshIcons();
                 };
 
                 const toggleShoppingStatus = (item) => {
                     item.status = item.status === 'done' ? 'pending' : 'done';
                     syncData();
-                    refreshIcons();
                 };
 
                 const removeShoppingItem = (id) => {
@@ -850,7 +849,6 @@
 
                     recognition.onstart = () => {
                         isListening.value = true;
-                        refreshIcons();
                     };
 
                     recognition.onresult = (event) => {
@@ -890,7 +888,6 @@
                             status: 'pending'
                         });
                         syncData();
-                        refreshIcons();
                         showToast('เพิ่มเข้าใบรายการแล้วจ้า!');
                     } else {
                         // Add to inventory (original behavior)
@@ -903,7 +900,6 @@
                         };
                         editingItem.value = null; // New item mode
                         showItemModal.value = true;
-                        refreshIcons();
                         showToast('เข้าใจแล้วจ้า!');
                     }
                 };
@@ -957,7 +953,6 @@
                 // Settings
                 const openSettings = () => {
                     showSettingsModal.value = true;
-                    refreshIcons();
                 };
 
                 const saveSettings = () => {
@@ -1034,18 +1029,6 @@
                     if (savedTab) activeTab.value = savedTab;
 
                     fetchData();
-
-                    // Wait for Lucide to be ready
-                    if (!window.lucide) {
-                        const interval = setInterval(() => {
-                            if (window.lucide) {
-                                isLucideReady.value = true;
-                                clearInterval(interval);
-                            }
-                        }, 100);
-                    } else {
-                        isLucideReady.value = true;
-                    }
 
                     // Background Auto-Sync logic
                     let pollInterval = null;
