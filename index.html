@@ -108,7 +108,7 @@
     
     1. สร้าง Google Sheet ใหม่ และตั้งชื่อว่า "MyKitchen_DB"
     2. ตั้งชื่อ Sheet แรกว่า "Inventory" และใส่ Header ดังนี้:
-       A1: id, B1: category, C1: name, D1: quantity, E1: expiry
+       A1: id, B1: category, C1: name, D1: quantity, E1: unit, F1: expiry
     3. ตั้งชื่อ Sheet ที่สองว่า "Shopping" และใส่ Header ดังนี้:
        A1: id, B1: name, C1: note, D1: status
     
@@ -123,7 +123,7 @@
       const shoppingSheet = ss.getSheetByName("Shopping");
       
       const inventory = inventorySheet.getDataRange().getValues().slice(1).map(r => ({
-        id: r[0], category: r[1], name: r[2], quantity: r[3], expiry: r[4] instanceof Date ? r[4].toISOString().split('T')[0] : r[4]
+        id: r[0], category: r[1], name: r[2], quantity: r[3], unit: r[4], expiry: r[5] instanceof Date ? r[5].toISOString().split('T')[0] : r[5]
       }));
       
       const shopping = shoppingSheet.getDataRange().getValues().slice(1).map(r => ({
@@ -142,9 +142,9 @@
       if (action === "updateInventory") {
         const sheet = ss.getSheetByName("Inventory");
         sheet.clearContents();
-        sheet.appendRow(["id", "category", "name", "quantity", "expiry"]);
+        sheet.appendRow(["id", "category", "name", "quantity", "unit", "expiry"]);
         data.items.forEach(item => {
-          sheet.appendRow([item.id, item.category, item.name, item.quantity, item.expiry]);
+          sheet.appendRow([item.id, item.category, item.name, item.quantity, item.unit, item.expiry]);
         });
       } else if (action === "updateShopping") {
         const sheet = ss.getSheetByName("Shopping");
@@ -267,7 +267,7 @@
                             <h3 class="font-semibold text-lg text-gray-800">{{ item.name }}</h3>
                             <div class="flex gap-4 mt-1">
                                 <span class="text-xs text-gray-500 flex items-center gap-1">
-                                    <i data-lucide="package" class="w-3 h-3"></i> {{ item.quantity }}
+                                    <i data-lucide="package" class="w-3 h-3"></i> {{ item.quantity }} {{ item.unit }}
                                 </span>
                                 <span class="text-xs flex items-center gap-1"
                                     :class="isExpiring(item.expiry) ? 'text-red-500 font-medium' : 'text-gray-400'">
@@ -400,17 +400,23 @@
                             class="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-sage"
                             placeholder="เช่น นมจืด, ไข่ไก่ 10 ฟอง">
                     </div>
-                    <div class="flex gap-4">
-                        <div class="flex-1">
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
                             <label class="block text-sm font-medium text-gray-500 mb-1">จำนวน</label>
                             <input v-model="modalData.quantity" type="text"
                                 class="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-sage text-center"
                                 placeholder="1">
                         </div>
-                        <div class="flex-1">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-500 mb-1">หน่วย</label>
+                            <input v-model="modalData.unit" type="text"
+                                class="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-sage text-center"
+                                placeholder="เช่น ฟอง">
+                        </div>
+                        <div>
                             <label class="block text-sm font-medium text-gray-500 mb-1">วันหมดอายุ</label>
                             <input v-model="modalData.expiry" type="date"
-                                class="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-sage">
+                                class="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-sage px-2">
                         </div>
                     </div>
 
@@ -504,7 +510,7 @@
                 const showItemModal = ref(false);
                 const showSettingsModal = ref(false);
                 const editingItem = ref(null);
-                const modalData = ref({ category: 'fridge', name: '', quantity: '', expiry: '' });
+                const modalData = ref({ category: 'fridge', name: '', quantity: '', unit: '', expiry: '' });
                 const newShoppingItem = ref('');
 
                 const categories = [
@@ -592,7 +598,7 @@
                 // CRUD Operations
                 const openAddItemModal = () => {
                     editingItem.value = null;
-                    modalData.value = { category: selectedCategory.value, name: '', quantity: '1', expiry: '' };
+                    modalData.value = { category: selectedCategory.value, name: '', quantity: '1', unit: '', expiry: '' };
                     showItemModal.value = true;
                     refreshIcons();
                 };
@@ -727,6 +733,7 @@
                             category: parsed.category || selectedCategory.value,
                             name: parsed.name,
                             quantity: parsed.quantity || '1',
+                            unit: parsed.unit || '',
                             expiry: ''
                         };
                         editingItem.value = null; // New item mode
@@ -742,6 +749,7 @@
                     let text = phrase.trim();
                     let category = null;
                     let quantity = '1';
+                    let unit = '';
                     let name = '';
 
                     // 1. Clean "เพิ่ม" (Add)
@@ -759,30 +767,28 @@
                         text = text.replace(/ใน?(ชั้นเก็บของ|ชั้น|ตู้เก็บของ|ตู้|ของแห้ง)/g, '');
                     }
 
-                    // 3. Extract Quantity & Unit
+                    // 3. Extract Quantity, Unit and Name
                     const thaiNumbers = {
                         'หนึ่ง': '1', 'สอง': '2', 'สาม': '3', 'สี่': '4', 'ห้า': '5',
                         'หก': '6', 'เจ็ด': '7', 'แปด': '8', 'เก้า': '9', 'สิบ': '10'
                     };
 
                     // Pattern: [Item Name] [Number] [Unit]
-                    // We look for a number (digits or Thai words) optionally followed by common units
-                    const qRegex = /(\d+|หนึ่ง|สอง|สาม|สี่|ห้า|หก|เจ็ด|แปด|เก้า|สิบ)\s*([กฟขกชลพ][\u0E00-\u0E7F]*)?$/;
+                    // Look for digits or Thai words for numbers
+                    const qRegex = /(\d+|หนึ่ง|สอง|สาม|สี่|ห้า|หก|เจ็ด|แปด|เก้า|สิบ)\s*([\u0E00-\u0E7F]+)?$/;
                     const match = text.match(qRegex);
 
                     if (match) {
                         let num = match[1];
                         if (thaiNumbers[num]) num = thaiNumbers[num];
                         quantity = num;
-
-                        // Unit is match[2] if exists
-                        const unit = match[2] ? ' ' + match[2] : '';
-                        name = text.replace(match[0], '').trim() + unit;
+                        unit = match[2] ? match[2].trim() : '';
+                        name = text.replace(match[0], '').trim();
                     } else {
                         name = text.trim();
                     }
 
-                    return { name, quantity, category };
+                    return { name, quantity, unit, category };
                 };
 
                 // Settings
