@@ -185,14 +185,14 @@
                         <p class="text-[10px] opacity-80 bg-black/10 px-2 py-0.5 rounded-full">{{ currentTabLabel }}</p>
                         <p v-if="lastSyncTime" :key="lastSyncTime"
                             class="text-[9px] opacity-60 flex items-center gap-1">
-                            <i :key="isLoading" data-lucide="refresh-cw" class="w-2.5 h-2.5"
-                                :class="isLoading ? 'animate-spin' : ''"></i>
+                            <span
+                                v-html="renderIcon('refresh-cw', 'w-2.5 h-2.5 ' + (isLoading ? 'animate-spin' : ''))"></span>
                             ซิงค์ล่าสุด: {{ lastSyncTime }}
                         </p>
                     </div>
                 </div>
                 <button @click="openSettings" class="p-2 bg-white/20 rounded-full">
-                    <i :key="'settings-icon'" data-lucide="settings" class="w-5 h-5"></i>
+                    <span v-html="renderIcon('settings', 'w-5 h-5')"></span>
                 </button>
             </div>
         </header>
@@ -205,7 +205,7 @@
                 <!-- Expiry Alert Section -->
                 <section>
                     <div class="flex items-center gap-2 mb-3">
-                        <i :key="'bell-icon'" data-lucide="bell" class="w-5 h-5 text-red-500"></i>
+                        <span v-html="renderIcon('bell', 'w-5 h-5 text-red-500')"></span>
                         <h2 class="text-lg font-semibold text-gray-800">แจ้งเตือนใกล้หมดอายุ</h2>
                     </div>
                     <div v-if="expiringSoon.length > 0" class="space-y-3">
@@ -221,8 +221,7 @@
                     </div>
                     <div v-else :key="'no-exp'"
                         class="card p-8 text-center text-gray-500 border-2 border-dashed border-gray-200">
-                        <i :key="'no-exp-icon'" data-lucide="check-circle"
-                            class="w-10 h-10 mx-auto mb-2 text-sage opacity-50"></i>
+                        <span v-html="renderIcon('check-circle', 'w-10 h-10 mx-auto mb-2 text-sage opacity-50')"></span>
                         <p>ไม่มีสินค้าที่ใกล้หมดอายุ</p>
                     </div>
                 </section>
@@ -231,7 +230,7 @@
                 <section>
                     <div class="flex items-center justify-between mb-3">
                         <div class="flex items-center gap-2">
-                            <i :key="'low-icon'" data-lucide="shopping-cart" class="w-5 h-5 text-orange-500"></i>
+                            <span v-html="renderIcon('shopping-cart', 'w-5 h-5 text-orange-500')"></span>
                             <h2 class="text-lg font-semibold text-gray-800">สินค้าใกล้หมด</h2>
                         </div>
                         <button v-if="lowStockItems.length > 0" @click="addAllLowToShopping"
@@ -276,8 +275,8 @@
                     <input v-model="searchQuery" type="text"
                         :placeholder="'หาชื่อสินค้าใน ' + getCategoryLabel(selectedCategory) + '...'"
                         class="w-full px-5 py-3 pr-10 rounded-2xl border-none shadow-sm focus:ring-2 focus:ring-sage placeholder-gray-400">
-                    <i :key="selectedCategory" data-lucide="search"
-                        class="w-5 h-5 absolute right-4 top-3.5 text-gray-400"></i>
+                    <span class="absolute right-4 top-3.5 text-gray-400"
+                        v-html="renderIcon('search', 'w-5 h-5')"></span>
                 </div>
 
                 <!-- Item List -->
@@ -292,19 +291,19 @@
                                     {{ getCategoryLabel(item.category) }}
                                 </span>
                                 <span class="text-xs text-gray-500 flex items-center gap-1">
-                                    <i :key="item.id + 'pkg'" data-lucide="package" class="w-3 h-3"></i> {{
+                                    <span v-html="renderIcon('package', 'w-3 h-3')"></span> {{
                                     item.quantity }} {{ item.unit }}
                                 </span>
                                 <span class="text-xs flex items-center gap-1"
                                     :class="isExpiring(item.expiry) ? 'text-red-500 font-medium' : 'text-gray-400'">
-                                    <i :key="item.id + 'cal'" data-lucide="calendar" class="w-3 h-3"></i> {{
+                                    <span v-html="renderIcon('calendar', 'w-3 h-3')"></span> {{
                                     formatDate(item.expiry) }}
                                 </span>
                             </div>
                         </div>
                         <div class="flex items-center gap-1">
                             <button @click="editItem(item)" class="p-2 text-gray-400 hover:text-sage transition-colors">
-                                <i :key="item.id + 'edit'" data-lucide="edit-3" class="w-5 h-5"></i>
+                                <span v-html="renderIcon('edit-3', 'w-5 h-5')"></span>
                             </button>
                             <button @click="cycleStatus(item)" :key="item.id + (item.status || 'good')"
                                 class="w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-95 shadow-sm"
@@ -314,9 +313,8 @@
                                     'bg-red-100 text-red-600': item.status === 'out',
                                     'bg-orange-500 text-white shadow-orange-200': item.status === 'shopping'
                                 }">
-                                <i :key="(item.status || 'good')"
-                                    :data-lucide="(item.status || 'good') === 'good' ? 'check-circle' : (item.status === 'low' ? 'alert-triangle' : (item.status === 'out' ? 'x-circle' : 'shopping-cart'))"
-                                    class="w-5 h-5"></i>
+                                <span
+                                    v-html="renderIcon((item.status || 'good') === 'good' ? 'check-circle' : (item.status === 'low' ? 'alert-triangle' : (item.status === 'out' ? 'x-circle' : 'shopping-cart')), 'w-5 h-5')"></span>
                             </button>
                         </div>
                     </div>
@@ -326,11 +324,11 @@
                 <div class="flex gap-3">
                     <button @click="openAddItemModal"
                         class="sage-bg text-white flex-1 py-4 rounded-2xl shadow-lg flex justify-center items-center gap-2 font-semibold text-lg hover:brightness-105 active:scale-95 transition-all">
-                        <i :key="'plus-btn'" data-lucide="plus-circle" class="w-6 h-6"></i> เพิ่มทางแป้นพิมพ์
+                        <span v-html="renderIcon('plus-circle', 'w-6 h-6')"></span> เพิ่มทางแป้นพิมพ์
                     </button>
                     <button @click="startVoiceSearch"
                         class="bg-orange-500 text-white p-4 rounded-2xl shadow-lg hover:brightness-105 active:scale-95 transition-all">
-                        <i :key="'mic-btn'" data-lucide="mic" class="w-7 h-7"></i>
+                        <span v-html="renderIcon('mic', 'w-7 h-7')"></span>
                     </button>
                 </div>
             </div>
@@ -349,10 +347,10 @@
                         placeholder="พิมพ์ชื่อของที่อยากซื้อ..."
                         class="flex-1 px-5 py-3 rounded-2xl border-none shadow-sm focus:ring-2 focus:ring-sage">
                     <button @click="addShoppingItem" class="sage-bg text-white p-3 rounded-2xl shadow-md">
-                        <i :key="'plus-shop'" data-lucide="plus" class="w-6 h-6"></i>
+                        <span v-html="renderIcon('plus', 'w-6 h-6')"></span>
                     </button>
                     <button @click="startVoiceSearch" class="bg-orange-500 text-white p-3 rounded-2xl shadow-md">
-                        <i :key="'mic-shop'" data-lucide="mic" class="w-6 h-6"></i>
+                        <span v-html="renderIcon('mic', 'w-6 h-6')"></span>
                     </button>
                 </div>
 
@@ -362,7 +360,7 @@
                     <div class="flex gap-2 overflow-x-auto no-scrollbar pb-2">
                         <button v-for="item in suggestedItems" :key="'sug-'+item.id" @click="moveToShopping(item)"
                             class="flex-shrink-0 bg-white border border-dashed border-gray-200 px-4 py-2.5 rounded-2xl flex items-center gap-2 active:scale-95 transition-all text-sm font-medium text-gray-600 hover:bg-sage/5 hover:border-sage hover:text-sage">
-                            <i :key="item.id" data-lucide="plus-circle" class="w-4 h-4 text-orange-400"></i>
+                            <span v-html="renderIcon('plus-circle', 'w-4 h-4 text-orange-400')"></span>
                             {{ item.name }}
                         </button>
                     </div>
@@ -376,8 +374,7 @@
                         <div :key="item.id + item.status"
                             class="flex-shrink-0 w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-all"
                             :class="item.status === 'done' ? 'sage-bg sage-border text-white shadow-sm' : 'border-gray-200 bg-white'">
-                            <i v-if="item.status === 'done'" :key="item.id + 'check'" data-lucide="check"
-                                class="w-5 h-5"></i>
+                            <span v-if="item.status === 'done'" v-html="renderIcon('check', 'w-5 h-5')"></span>
                         </div>
                         <div class="ml-4 flex-1">
                             <p class="font-medium transition-all"
@@ -388,14 +385,14 @@
                         </div>
                         <button @click.stop="removeShoppingItem(item.id)"
                             class="p-2 text-gray-300 hover:text-red-400 active:scale-125 transition-transform">
-                            <i :key="item.id + 'del'" data-lucide="x" class="w-5 h-5"></i>
+                            <span v-html="renderIcon('x', 'w-5 h-5')"></span>
                         </button>
                     </div>
                 </div>
 
                 <div v-if="shoppingList.length === 0"
                     class="card p-12 text-center text-gray-400 border-2 border-dashed border-gray-200">
-                    <i :key="'empty-basket'" data-lucide="shopping-bag" class="w-12 h-12 mx-auto mb-3 opacity-30"></i>
+                    <span v-html="renderIcon('shopping-bag', 'w-12 h-12 mx-auto mb-3 opacity-30')"></span>
                     <p>ยังไม่มีรายการซื้อของ</p>
                 </div>
             </div>
@@ -406,19 +403,19 @@
             class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-100 flex justify-around p-3 pb-safe z-50 bottom-nav rounded-t-3xl">
             <button @click="activeTab = 'home'" :class="activeTab === 'home' ? 'sage-text' : 'text-gray-400'"
                 class="flex flex-col items-center gap-1 transition-all">
-                <i :key="'tab-home'" data-lucide="home" class="w-6 h-6"></i>
+                <span v-html="renderIcon('home', 'w-6 h-6')"></span>
                 <span class="text-[10px] font-medium">หน้าแรก</span>
             </button>
             <button @click="activeTab = 'inventory'" :class="activeTab === 'inventory' ? 'sage-text' : 'text-gray-400'"
                 class="flex flex-col items-center gap-1 transition-all">
-                <i :key="'tab-inv'" data-lucide="package" class="w-6 h-6"></i>
+                <span v-html="renderIcon('package', 'w-6 h-6')"></span>
                 <span class="text-[10px] font-medium">คลังสินค้า</span>
             </button>
             <div class="relative">
                 <button @click="activeTab = 'shopping'"
                     :class="activeTab === 'shopping' ? 'sage-text' : 'text-gray-400'"
                     class="flex flex-col items-center gap-1 transition-all">
-                    <i :key="'tab-shop'" data-lucide="shopping-basket" class="w-6 h-6"></i>
+                    <span v-html="renderIcon('shopping-basket', 'w-6 h-6')"></span>
                     <span class="text-[10px] font-medium">รายการซื้อ</span>
                 </button>
                 <div v-if="shoppingCount > 0"
@@ -436,8 +433,9 @@
             <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 pb-12 sm:pb-8 animate-slideUp">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl font-bold">{{ editingItem ? 'แก้ไขสินค้า' : 'เพิ่มสินค้าใหม่' }}</h2>
-                    <button @click="showItemModal = false" class="p-2 bg-gray-100 rounded-full"><i :key="'close-modal'"
-                            data-lucide="x" class="w-5 h-5"></i></button>
+                    <button @click="showItemModal = false" class="p-2 bg-gray-100 rounded-full">
+                        <span v-html="renderIcon('x', 'w-5 h-5')"></span>
+                    </button>
                 </div>
 
                 <div class="space-y-4">
@@ -467,10 +465,8 @@
                                     :class="modalData.status === s ? 
                                         (s === 'good' ? 'bg-green-500 text-white border-green-500' : s === 'low' ? 'bg-yellow-500 text-white border-yellow-500' : 'bg-red-500 text-white border-red-500') : 
                                         'bg-gray-50 text-gray-300 border-transparent'">
-                                    <i :key="s" v-if="s === 'good'" data-lucide="check-circle" class="w-5 h-5"></i>
-                                    <i :key="s" v-else-if="s === 'low'" data-lucide="alert-triangle"
-                                        class="w-5 h-5"></i>
-                                    <i :key="s" v-else-if="s === 'out'" data-lucide="x-circle" class="w-5 h-5"></i>
+                                    <span
+                                        v-html="renderIcon(s === 'good' ? 'check-circle' : (s === 'low' ? 'alert-triangle' : 'x-circle'), 'w-5 h-5')"></span>
                                 </button>
                             </div>
                         </div>
@@ -509,8 +505,9 @@
             <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl font-bold">ตั้งค่าการเชื่อมต่อ</h2>
-                    <button @click="showSettingsModal = false" class="p-2 bg-gray-100 rounded-full"><i
-                            :key="'close-settings'" data-lucide="x" class="w-5 h-5"></i></button>
+                    <button @click="showSettingsModal = false" class="p-2 bg-gray-100 rounded-full">
+                        <span v-html="renderIcon('x', 'w-5 h-5')"></span>
+                    </button>
                 </div>
 
                 <div class="space-y-4">
@@ -525,8 +522,8 @@
                     <div class="pt-4 border-t border-gray-100 mt-4">
                         <button @click="fetchData(true)"
                             class="w-full bg-gray-100 text-gray-700 py-3 rounded-2xl font-medium flex items-center justify-center gap-2 active:scale-95 transition-all">
-                            <i :key="isLoading" data-lucide="refresh-cw" class="w-4 h-4"
-                                :class="isLoading ? 'animate-spin' : ''"></i>
+                            <span
+                                v-html="renderIcon('refresh-cw', 'w-4 h-4 ' + (isLoading ? 'animate-spin' : ''))"></span>
                             {{ isLoading ? 'กำลังดึงข้อมูล...' : 'ดึงข้อมูลใหม่ตอนนี้' }}
                         </button>
                     </div>
@@ -540,7 +537,7 @@
         <!-- Toast Notification -->
         <div v-if="toast.show" :key="toast.message"
             class="fixed top-6 left-1/2 -translate-x-1/2 z-[200] bg-gray-900 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-fadeDown">
-            <i :key="'toast-icon'" data-lucide="info" class="w-5 h-5 text-sage"></i>
+            <span v-html="renderIcon('info', 'w-5 h-5 text-sage')"></span>
             <span class="font-medium">{{ toast.message }}</span>
         </div>
 
@@ -551,7 +548,7 @@
                 <div class="mb-8 relative">
                     <div class="absolute inset-0 bg-white/20 rounded-full animate-ping"></div>
                     <div class="bg-white/20 p-10 rounded-full relative">
-                        <i :key="'big-mic'" data-lucide="mic" class="w-20 h-20"></i>
+                        <span v-html="renderIcon('mic', 'w-20 h-20')"></span>
                     </div>
                 </div>
                 <h2 class="text-3xl font-bold mb-3">กำลังฟังอยู่นะจ๊ะ...</h2>
@@ -647,10 +644,22 @@
                 const shoppingCount = computed(() => shoppingList.value.filter(i => i.status !== 'done').length);
 
                 // Methods
+                const renderIcon = (name, customClass = '') => {
+                    try {
+                        if (window.lucide && window.lucide.icons[name]) {
+                            return window.lucide.icons[name].toSvg({
+                                class: customClass,
+                                'stroke-width': 2.5
+                            });
+                        }
+                    } catch (e) {
+                        console.warn('Icon error:', name);
+                    }
+                    return `<span class="w-5 h-5 bg-gray-200 rounded"></span>`; // Fallback
+                };
+
                 const refreshIcons = () => {
-                    setTimeout(() => {
-                        if (window.lucide) window.lucide.createIcons();
-                    }, 50);
+                    // No longer needed as we use renderIcon
                 };
 
                 const showToast = (msg) => {
@@ -1017,7 +1026,6 @@
                     if (savedTab) activeTab.value = savedTab;
 
                     fetchData();
-                    refreshIcons();
 
                     // Background Auto-Sync logic
                     let pollInterval = null;
@@ -1056,9 +1064,7 @@
 
                 watch(activeTab, (newTab) => {
                     localStorage.setItem('myKitchen_activeTab', newTab);
-                    refreshIcons();
                 });
-                watch(selectedCategory, () => refreshIcons());
 
                 return {
                     activeTab, categories, selectedCategory, searchQuery, filteredInventory,
@@ -1071,7 +1077,8 @@
                     openSettings, saveSettings,
                     isListening, startVoiceSearch,
                     lastSyncTime,
-                    cycleStatus, addAllLowToShopping, moveToShopping
+                    cycleStatus, addAllLowToShopping, moveToShopping,
+                    renderIcon
                 };
             }
         }).mount('#app');
