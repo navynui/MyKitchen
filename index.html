@@ -397,7 +397,8 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-500 mb-1">หมวดหมู่</label>
                         <div class="flex gap-2">
-                            <button v-for="cat in categories" :key="cat.id" @click="modalData.category = cat.id"
+                            <button v-for="cat in categories.filter(c => c.id !== 'all')" :key="cat.id"
+                                @click="modalData.category = cat.id"
                                 :class="modalData.category === cat.id ? 'sage-bg text-white' : 'bg-gray-100 text-gray-600'"
                                 class="flex-1 py-3 rounded-xl text-sm font-medium transition-all">
                                 {{ cat.label }}
@@ -527,7 +528,8 @@
                 const categories = [
                     { id: 'fridge', label: 'ตู้เย็น' },
                     { id: 'freezer', label: 'ตู้แช่แข็ง' },
-                    { id: 'store', label: 'ชั้นเก็บของ' }
+                    { id: 'store', label: 'ชั้นเก็บของ' },
+                    { id: 'all', label: 'รวม' }
                 ];
 
                 // Computed
@@ -537,7 +539,9 @@
                 });
 
                 const filteredInventory = computed(() => {
-                    let items = inventory.value.filter(item => item.category === selectedCategory.value);
+                    let items = selectedCategory.value === 'all'
+                        ? [...inventory.value]
+                        : inventory.value.filter(item => item.category === selectedCategory.value);
                     if (searchQuery.value) {
                         items = items.filter(item => item.name.toLowerCase().includes(searchQuery.value.toLowerCase()));
                     }
@@ -609,7 +613,8 @@
                 // CRUD Operations
                 const openAddItemModal = () => {
                     editingItem.value = null;
-                    modalData.value = { category: selectedCategory.value, name: '', quantity: '1', unit: '', expiry: '' };
+                    const defaultCat = selectedCategory.value === 'all' ? 'fridge' : selectedCategory.value;
+                    modalData.value = { category: defaultCat, name: '', quantity: '1', unit: '', expiry: '' };
                     showItemModal.value = true;
                     refreshIcons();
                 };
