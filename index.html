@@ -322,6 +322,9 @@
                     <button @click="addShoppingItem" class="sage-bg text-white p-3 rounded-2xl shadow-md">
                         <i data-lucide="plus" class="w-6 h-6"></i>
                     </button>
+                    <button @click="startVoiceSearch" class="bg-orange-500 text-white p-3 rounded-2xl shadow-md">
+                        <i data-lucide="mic" class="w-6 h-6"></i>
+                    </button>
                 </div>
 
                 <!-- Shopping Items -->
@@ -736,7 +739,23 @@
                     console.log('Voice result:', text);
                     const parsed = parseThaiInventoryPhrase(text);
 
-                    if (parsed.name) {
+                    if (!parsed.name) {
+                        return showToast('ไม่เข้าใจคำสั่งค่ะ ลองอีกทีนะคะ');
+                    }
+
+                    if (activeTab.value === 'shopping') {
+                        // Add to shopping list
+                        const displayName = parsed.name + (parsed.quantity !== '1' ? ` ${parsed.quantity}` : '') + (parsed.unit ? ` ${parsed.unit}` : '');
+                        shoppingList.value.unshift({
+                            id: Date.now().toString(),
+                            name: displayName,
+                            status: 'pending'
+                        });
+                        syncData();
+                        refreshIcons();
+                        showToast('เพิ่มเข้าใบรายการแล้วจ้า!');
+                    } else {
+                        // Add to inventory (original behavior)
                         modalData.value = {
                             category: parsed.category || selectedCategory.value,
                             name: parsed.name,
@@ -748,8 +767,6 @@
                         showItemModal.value = true;
                         refreshIcons();
                         showToast('เข้าใจแล้วจ้า!');
-                    } else {
-                        showToast('ไม่เข้าใจคำสั่งค่ะ ลองอีกทีนะคะ');
                     }
                 };
 
