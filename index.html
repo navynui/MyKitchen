@@ -988,13 +988,19 @@
                         const response = await fetch(url);
                         const data = await response.json();
                         if (data.inventory) {
-                            // Sanitize dates to yyyy-MM-dd to avoid browser warnings in date inputs
-                            inventory.value = data.inventory.map(item => ({
-                                ...item,
-                                expiry: (item.expiry && item.expiry.includes('T')) ? item.expiry.split('T')[0] : item.expiry
-                            }));
+                            // Local Priority: Skip updating local state if user has unsynced changes
+                            // UNLESS this is a forced refresh initiated by the user.
+                            if (force || !hasPendingChanges.value) {
+                                // Sanitize dates to yyyy-MM-dd to avoid browser warnings in date inputs
+                                inventory.value = data.inventory.map(item => ({
+                                    ...item,
+                                    expiry: (item.expiry && item.expiry.includes('T')) ? item.expiry.split('T')[0] : item.expiry
+                                }));
+                                if (data.shopping) shoppingList.value = data.shopping;
+                            } else {
+                                console.log("Skipping background poll update due to pending local changes.");
+                            }
                         }
-                        if (data.shopping) shoppingList.value = data.shopping;
 
                         localStorage.setItem('myKitchen_inventory', JSON.stringify(inventory.value));
                         localStorage.setItem('myKitchen_shopping', JSON.stringify(shoppingList.value));
