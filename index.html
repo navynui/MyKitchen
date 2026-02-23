@@ -532,7 +532,7 @@
                 const categories = [
                     { id: 'fridge', label: 'ตู้เย็น' },
                     { id: 'freezer', label: 'ตู้แช่แข็ง' },
-                    { id: 'store', label: 'ชั้นเก็บของ' },
+                    { id: 'store', label: 'ชั้นเก็บ' },
                     { id: 'all', label: 'รวม' }
                 ];
 
@@ -798,7 +798,7 @@
                         text = text.replace(/ใน?(ตู้แช่แข็ง|ตู้แช่|ช่องฟรีซ|ฟรีซ|แช่เนื้อ)/g, '');
                     } else if (text.includes('ชั้น') || text.includes('ตู้') || text.includes('แห้ง')) {
                         category = 'store';
-                        text = text.replace(/ใน?(ชั้นเก็บของ|ชั้น|ตู้เก็บของ|ตู้|ของแห้ง)/g, '');
+                        text = text.replace(/ใน?(ชั้นเก็บ|ชั้น|ตู้เก็บของ|ตู้|ของแห้ง)/g, '');
                     }
 
                     // 3. Extract Quantity, Unit and Name
