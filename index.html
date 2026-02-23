@@ -300,7 +300,7 @@
                             <button @click="editItem(item)" class="p-2 text-gray-400 hover:text-sage transition-colors">
                                 <i data-lucide="edit-3" class="w-5 h-5"></i>
                             </button>
-                            <button @click="cycleStatus(item)"
+                            <button @click="cycleStatus(item)" :key="item.id + (item.status || 'good')"
                                 class="w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-95 shadow-sm"
                                 :class="{
                                     'bg-green-100 text-green-600': (item.status || 'good') === 'good',
@@ -308,11 +308,8 @@
                                     'bg-red-100 text-red-600': item.status === 'out',
                                     'bg-orange-500 text-white shadow-orange-200': item.status === 'shopping'
                                 }">
-                                <i v-if="(item.status || 'good') === 'good'" data-lucide="check-circle"
-                                    class="w-5 h-5"></i>
-                                <i v-else-if="item.status === 'low'" data-lucide="alert-triangle" class="w-5 h-5"></i>
-                                <i v-else-if="item.status === 'out'" data-lucide="x-circle" class="w-5 h-5"></i>
-                                <i v-else-if="item.status === 'shopping'" data-lucide="shopping-cart"
+                                <i :key="(item.status || 'good')"
+                                    :data-lucide="(item.status || 'good') === 'good' ? 'check-circle' : (item.status === 'low' ? 'alert-triangle' : (item.status === 'out' ? 'x-circle' : 'shopping-cart'))"
                                     class="w-5 h-5"></i>
                             </button>
                         </div>
@@ -372,7 +369,7 @@
                         :class="item.status === 'done' ? 'bg-gray-50/50' : ''" @click="toggleShoppingStatus(item)">
                         <div class="flex-shrink-0 w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-all"
                             :class="item.status === 'done' ? 'sage-bg sage-border text-white shadow-sm' : 'border-gray-200 bg-white'">
-                            <i v-if="item.status === 'done'" data-lucide="check" class="w-5 h-5"></i>
+                            <i v-if="item.status === 'done'" :key="item.id" data-lucide="check" class="w-5 h-5"></i>
                         </div>
                         <div class="ml-4 flex-1">
                             <p class="font-medium transition-all"
@@ -526,10 +523,11 @@
             </div>
         </div>
 
-        <!-- Notification Toast -->
-        <div v-if="toast.show"
-            class="fixed top-20 left-1/2 -translate-x-1/2 z-[200] sage-bg text-white px-6 py-3 rounded-full shadow-2xl animate-fadeDown flex items-center gap-2 font-medium">
-            <i data-lucide="check-circle" class="w-5 h-5"></i> {{ toast.message }}
+        <!-- Toast Notification -->
+        <div v-if="toast.show" :key="toast.message"
+            class="fixed top-6 left-1/2 -translate-x-1/2 z-[200] bg-gray-900 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-fadeDown">
+            <i data-lucide="info" class="w-5 h-5 text-sage"></i>
+            <span class="font-medium">{{ toast.message }}</span>
         </div>
 
         <!-- Voice Control UI (Overlay when listening) -->
