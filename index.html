@@ -178,9 +178,16 @@
         <!-- Header -->
         <header class="sage-bg text-white p-6 sticky top-0 z-10 rounded-b-3xl">
             <div class="flex justify-between items-center">
-                <div>
+                <div class="flex-1">
                     <h1 class="text-2xl font-semibold">ครัวของฉัน</h1>
-                    <p class="text-xs opacity-90">{{ currentTabLabel }}</p>
+                    <div class="flex items-center gap-2 mt-1">
+                        <p class="text-[10px] opacity-80 bg-black/10 px-2 py-0.5 rounded-full">{{ currentTabLabel }}</p>
+                        <p v-if="lastSyncTime" class="text-[9px] opacity-60 flex items-center gap-1">
+                            <i data-lucide="refresh-cw" class="w-2.5 h-2.5"
+                                :class="isLoading ? 'animate-spin' : ''"></i>
+                            ซิงค์ล่าสุด: {{ lastSyncTime }}
+                        </p>
+                    </div>
                 </div>
                 <button @click="openSettings" class="p-2 bg-white/20 rounded-full">
                     <i data-lucide="settings" class="w-5 h-5"></i>
@@ -504,6 +511,7 @@
                 const settings = ref({ apiUrl: '' });
                 const isListening = ref(false);
                 const isLoading = ref(false);
+                const lastSyncTime = ref('');
                 const toast = ref({ show: false, message: '' });
 
                 // UI State
@@ -809,14 +817,18 @@
                     if (!settings.value.apiUrl) return;
                     isLoading.value = true;
                     try {
-                        // Add cache buster to URL
                         const url = settings.value.apiUrl + (settings.value.apiUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
                         const response = await fetch(url);
                         const data = await response.json();
                         if (data.inventory) inventory.value = data.inventory;
                         if (data.shopping) shoppingList.value = data.shopping;
+
                         localStorage.setItem('myKitchen_inventory', JSON.stringify(inventory.value));
                         localStorage.setItem('myKitchen_shopping', JSON.stringify(shoppingList.value));
+
+                        const now = new Date();
+                        lastSyncTime.value = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+
                         if (force) showToast('ดึงข้อมูลล่าสุดแล้วค่ะ');
                     } catch (e) {
                         console.error("Fetch failed", e);
@@ -868,6 +880,40 @@
 
                     fetchData();
                     refreshIcons();
+
+                    // Background Auto-Sync logic
+                    let pollInterval = null;
+
+                    const startPolling = () => {
+                        if (!pollInterval) {
+                            pollInterval = setInterval(() => {
+                                // Only poll if not currently editing or listening
+                                if (!showItemModal.value && !isListening.value) {
+                                    fetchData();
+                                }
+                            }, 60000); // 1 minute
+                        }
+                    };
+
+                    const stopPolling = () => {
+                        if (pollInterval) {
+                            clearInterval(pollInterval);
+                            pollInterval = null;
+                        }
+                    };
+
+                    // Initial start
+                    startPolling();
+
+                    // Page Visibility API support
+                    document.addEventListener('visibilitychange', () => {
+                        if (document.hidden) {
+                            stopPolling();
+                        } else {
+                            fetchData(); // Immediate sync on return
+                            startPolling();
+                        }
+                    });
                 });
 
                 watch(activeTab, (newTab) => {
@@ -885,7 +931,8 @@
                     openAddItemModal, editItem, saveItem, removeItem,
                     addShoppingItem, addToShoppingList, toggleShoppingStatus, removeShoppingItem, clearBoughtItems,
                     openSettings, saveSettings,
-                    isListening, startVoiceSearch
+                    isListening, startVoiceSearch,
+                    lastSyncTime
                 };
             }
         }).mount('#app');
