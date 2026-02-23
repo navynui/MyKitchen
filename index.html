@@ -108,7 +108,7 @@
     
     1. สร้าง Google Sheet ใหม่ และตั้งชื่อว่า "MyKitchen_DB"
     2. ตั้งชื่อ Sheet แรกว่า "Inventory" และใส่ Header ดังนี้:
-       A1: id, B1: category, C1: name, D1: quantity, E1: unit, F1: expiry
+       A1: id, B1: category, C1: name, D1: quantity, E1: unit, F1: status, G1: expiry
     3. ตั้งชื่อ Sheet ที่สองว่า "Shopping" และใส่ Header ดังนี้:
        A1: id, B1: name, C1: note, D1: status
     
@@ -123,7 +123,7 @@
       const shoppingSheet = ss.getSheetByName("Shopping");
       
       const inventory = inventorySheet.getDataRange().getValues().slice(1).map(r => ({
-        id: r[0], category: r[1], name: r[2], quantity: r[3], unit: r[4], expiry: r[5] instanceof Date ? r[5].toISOString().split('T')[0] : r[5]
+        id: r[0], category: r[1], name: r[2], quantity: r[3], unit: r[4], status: r[5], expiry: r[6] instanceof Date ? r[6].toISOString().split('T')[0] : r[6]
       }));
       
       const shopping = shoppingSheet.getDataRange().getValues().slice(1).map(r => ({
@@ -142,9 +142,9 @@
       if (action === "updateInventory") {
         const sheet = ss.getSheetByName("Inventory");
         sheet.clearContents();
-        sheet.appendRow(["id", "category", "name", "quantity", "unit", "expiry"]);
+        sheet.appendRow(["id", "category", "name", "quantity", "unit", "status", "expiry"]);
         data.items.forEach(item => {
-          sheet.appendRow([item.id, item.category, item.name, item.quantity, item.unit, item.expiry]);
+          sheet.appendRow([item.id, item.category, item.name, item.quantity, item.unit, item.status, item.expiry]);
         });
       } else if (action === "updateShopping") {
         const sheet = ss.getSheetByName("Shopping");
@@ -225,18 +225,27 @@
 
                 <!-- Low Stock Section -->
                 <section>
-                    <div class="flex items-center gap-2 mb-3">
-                        <i data-lucide="shopping-cart" class="w-5 h-5 text-orange-500"></i>
-                        <h2 class="text-lg font-semibold text-gray-800">สินค้าใกล้หมด</h2>
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="shopping-cart" class="w-5 h-5 text-orange-500"></i>
+                            <h2 class="text-lg font-semibold text-gray-800">สินค้าใกล้หมด</h2>
+                        </div>
+                        <button v-if="lowStockItems.length > 0" @click="addAllLowToShopping"
+                            class="text-xs font-semibold text-orange-600 bg-orange-50 px-3 py-1.5 rounded-xl hover:bg-orange-100 active:scale-95 transition-all">
+                            ย้ายไปใบสั่งของทั้งหมด
+                        </button>
                     </div>
                     <div v-if="lowStockItems.length > 0" class="space-y-3">
                         <div v-for="item in lowStockItems" :key="item.id"
-                            class="card p-4 border-l-4 border-orange-500 flex justify-between items-center">
+                            class="card p-4 border-l-4 flex justify-between items-center"
+                            :class="item.status === 'out' ? 'border-red-500' : 'border-orange-500'">
                             <div>
                                 <p class="font-medium text-gray-900">{{ item.name }}</p>
-                                <p class="text-sm text-gray-500">เหลือเพียง: {{ item.quantity }}</p>
+                                <p v-if="item.status === 'out'" class="text-xs text-red-600 font-medium">ของหมดแล้ว!</p>
+                                <p v-else class="text-xs text-gray-500">เหลือเพียง: {{ item.quantity }} {{ item.unit }}
+                                </p>
                             </div>
-                            <button @click="addToShoppingList(item.name)"
+                            <button @click="moveToShopping(item)"
                                 class="sage-bg text-white px-3 py-1.5 rounded-xl text-sm font-medium">
                                 + รายการซื้อ
                             </button>
@@ -286,12 +295,24 @@
                                 </span>
                             </div>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <button @click="editItem(item)" class="p-2 text-gray-400 hover:text-sage">
+                        <div class="flex items-center gap-1">
+                            <button @click="editItem(item)" class="p-2 text-gray-400 hover:text-sage transition-colors">
                                 <i data-lucide="edit-3" class="w-5 h-5"></i>
                             </button>
-                            <button @click="addToShoppingList(item.name)" class="p-2 text-sage bg-sage/10 rounded-xl">
-                                <i data-lucide="shopping-cart" class="w-5 h-5"></i>
+                            <button @click="cycleStatus(item)"
+                                class="w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-95 shadow-sm"
+                                :class="{
+                                    'bg-green-100 text-green-600': (item.status || 'good') === 'good',
+                                    'bg-yellow-100 text-yellow-600': item.status === 'low',
+                                    'bg-red-100 text-red-600': item.status === 'out',
+                                    'bg-orange-500 text-white shadow-orange-200': item.status === 'shopping'
+                                }">
+                                <i v-if="(item.status || 'good') === 'good'" data-lucide="check-circle"
+                                    class="w-5 h-5"></i>
+                                <i v-else-if="item.status === 'low'" data-lucide="alert-triangle" class="w-5 h-5"></i>
+                                <i v-else-if="item.status === 'out'" data-lucide="x-circle" class="w-5 h-5"></i>
+                                <i v-else-if="item.status === 'shopping'" data-lucide="shopping-cart"
+                                    class="w-5 h-5"></i>
                             </button>
                         </div>
                     </div>
@@ -329,6 +350,18 @@
                     <button @click="startVoiceSearch" class="bg-orange-500 text-white p-3 rounded-2xl shadow-md">
                         <i data-lucide="mic" class="w-6 h-6"></i>
                     </button>
+                </div>
+
+                <!-- Suggested Items -->
+                <div v-if="suggestedItems.length > 0" class="mb-6">
+                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">แนะนำให้ซื้อ</h3>
+                    <div class="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+                        <button v-for="item in suggestedItems" :key="'sug-'+item.id" @click="moveToShopping(item)"
+                            class="flex-shrink-0 bg-white border border-dashed border-gray-200 px-4 py-2.5 rounded-2xl flex items-center gap-2 active:scale-95 transition-all text-sm font-medium text-gray-600 hover:bg-sage/5 hover:border-sage hover:text-sage">
+                            <i data-lucide="plus-circle" class="w-4 h-4 text-orange-400"></i>
+                            {{ item.name }}
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Shopping Items -->
@@ -417,6 +450,20 @@
                     </div>
                     <div class="grid grid-cols-3 gap-4">
                         <div>
+                            <label class="block text-sm font-medium text-gray-500 mb-1">สถานะ</label>
+                            <div class="flex gap-1">
+                                <button v-for="s in ['good', 'low', 'out']" :key="s" @click="modalData.status = s"
+                                    class="w-full h-12 rounded-xl border flex items-center justify-center transition-all"
+                                    :class="modalData.status === s ? 
+                                        (s === 'good' ? 'bg-green-500 text-white border-green-500' : s === 'low' ? 'bg-yellow-500 text-white border-yellow-500' : 'bg-red-500 text-white border-red-500') : 
+                                        'bg-gray-50 text-gray-300 border-transparent'">
+                                    <i v-if="s === 'good'" data-lucide="check-circle" class="w-5 h-5"></i>
+                                    <i v-else-if="s === 'low'" data-lucide="alert-triangle" class="w-5 h-5"></i>
+                                    <i v-else-if="s === 'out'" data-lucide="x-circle" class="w-5 h-5"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div>
                             <label class="block text-sm font-medium text-gray-500 mb-1">จำนวน</label>
                             <input v-model="modalData.quantity" type="text"
                                 class="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-sage text-center"
@@ -426,13 +473,13 @@
                             <label class="block text-sm font-medium text-gray-500 mb-1">หน่วย</label>
                             <input v-model="modalData.unit" type="text"
                                 class="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-sage text-center"
-                                placeholder="เช่น ฟอง">
+                                placeholder="ชิ้น">
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-500 mb-1">วันหมดอายุ</label>
-                            <input v-model="modalData.expiry" type="date"
-                                class="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-sage px-2">
-                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-500 mb-1">วันหมดอายุ</label>
+                        <input v-model="modalData.expiry" type="date"
+                            class="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-sage px-2">
                     </div>
 
                     <button @click="saveItem"
@@ -494,8 +541,8 @@
                         <i data-lucide="mic" class="w-20 h-20"></i>
                     </div>
                 </div>
-                <h2 class="text-3xl font-bold mb-3">กำลังฟังลูกพี่อยู่นะ...</h2>
-                <p class="text-lg opacity-90 mb-12">ลองสำเนียงแบบ: "ไข่ไก่ 10 ฟอง ในตู้เย็น"</p>
+                <h2 class="text-3xl font-bold mb-3">กำลังฟังอยู่นะจ๊ะ...</h2>
+                <p class="text-lg opacity-90 mb-12">ลองพูดแบบ: "ไข่ไก่ 10 ฟอง ในตู้เย็น"</p>
                 <button @click="isListening = false"
                     class="bg-white text-sage px-10 py-4 rounded-2xl font-bold text-xl shadow-xl active:scale-95 transition-all">
                     ปิดไมค์
@@ -526,7 +573,7 @@
                 const showItemModal = ref(false);
                 const showSettingsModal = ref(false);
                 const editingItem = ref(null);
-                const modalData = ref({ category: 'fridge', name: '', quantity: '', unit: '', expiry: '' });
+                const modalData = ref({ category: 'fridge', name: '', quantity: '', unit: '', status: 'good', expiry: '' });
                 const newShoppingItem = ref('');
 
                 const categories = [
@@ -538,7 +585,7 @@
 
                 // Computed
                 const currentTabLabel = computed(() => {
-                    const labels = { home: 'ยินดีต้อนรับแม่จ๋า', inventory: 'เช็คของในครัว', shopping: 'ของต้องซื้อ' };
+                    const labels = { home: 'ยินดีต้อนรับจ้า', inventory: 'เช็คของในครัว', shopping: 'ของต้องซื้อ' };
                     return labels[activeTab.value];
                 });
 
@@ -577,10 +624,11 @@
                 });
 
                 const lowStockItems = computed(() => {
-                    return inventory.value.filter(item => {
-                        const q = String(item.quantity).toLowerCase();
-                        return q === '0' || q.includes('หมด') || q.includes('น้อย');
-                    });
+                    return inventory.value.filter(item => item.status === 'low' || item.status === 'out');
+                });
+
+                const suggestedItems = computed(() => {
+                    return inventory.value.filter(item => (item.status === 'low' || item.status === 'out'));
                 });
 
                 const shoppingCount = computed(() => shoppingList.value.filter(i => i.status !== 'done').length);
@@ -618,7 +666,7 @@
                 const openAddItemModal = () => {
                     editingItem.value = null;
                     const defaultCat = selectedCategory.value === 'all' ? 'fridge' : selectedCategory.value;
-                    modalData.value = { category: defaultCat, name: '', quantity: '1', unit: '', expiry: '' };
+                    modalData.value = { category: defaultCat, name: '', quantity: '1', unit: '', status: 'good', expiry: '' };
                     showItemModal.value = true;
                     refreshIcons();
                 };
@@ -626,6 +674,7 @@
                 const editItem = (item) => {
                     editingItem.value = item;
                     modalData.value = { ...item };
+                    if (!modalData.value.status) modalData.value.status = 'good';
                     showItemModal.value = true;
                     refreshIcons();
                 };
@@ -660,6 +709,56 @@
                         showItemModal.value = false;
                         syncData();
                         showToast('ลบสินค้าแล้ว');
+                    }
+                };
+
+                const cycleStatus = (item) => {
+                    const flow = ['good', 'low', 'out', 'shopping'];
+                    if (item.status === 'shopping') {
+                        if (confirm(`ย้าย "${item.name}" ไปที่รายการซื้อของและลบจากคลังใช่หรือไม่?`)) {
+                            moveToShopping(item);
+                        } else {
+                            item.status = 'good';
+                            syncData();
+                            refreshIcons();
+                        }
+                        return;
+                    }
+
+                    const currentIndex = flow.indexOf(item.status || 'good');
+                    const nextIndex = (currentIndex + 1) % flow.length;
+                    item.status = flow[nextIndex];
+
+                    syncData();
+                    refreshIcons();
+                };
+
+                const moveToShopping = (item) => {
+                    addToShoppingList(item.name);
+                    inventory.value = inventory.value.filter(i => i.id !== item.id);
+                    syncData();
+                };
+
+                const addAllLowToShopping = () => {
+                    const toMove = lowStockItems.value;
+                    if (toMove.length === 0) return;
+
+                    if (confirm(`ย้ายสินค้าใกล้หมดทั้ง ${toMove.length} รายการ ไปที่รายการซื้อของใช่ไหม?`)) {
+                        toMove.forEach(item => {
+                            if (!shoppingList.value.some(s => s.name === item.name)) {
+                                shoppingList.value.unshift({
+                                    id: Date.now().toString(),
+                                    name: item.name,
+                                    status: 'pending'
+                                });
+                            }
+                        });
+                        // Remove from inventory
+                        const lowIds = toMove.map(i => i.id);
+                        inventory.value = inventory.value.filter(i => !lowIds.includes(i.id));
+                        syncData();
+                        showToast('ย้ายสำเร็จแล้วจ้า');
+                        refreshIcons();
                     }
                 };
 
@@ -958,7 +1057,8 @@
                     addShoppingItem, addToShoppingList, toggleShoppingStatus, removeShoppingItem, clearBoughtItems,
                     openSettings, saveSettings,
                     isListening, startVoiceSearch,
-                    lastSyncTime
+                    lastSyncTime,
+                    cycleStatus, addAllLowToShopping
                 };
             }
         }).mount('#app');
