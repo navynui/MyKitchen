@@ -286,11 +286,17 @@
                     </div>
                 </div>
 
-                <!-- Add Button -->
-                <button @click="openAddItemModal"
-                    class="sage-bg text-white w-full py-4 rounded-2xl shadow-lg flex justify-center items-center gap-2 font-semibold text-lg hover:brightness-105 active:scale-95 transition-all">
-                    <i data-lucide="plus-circle" class="w-6 h-6"></i> เพิ่มสินค้าใหม่
-                </button>
+                <!-- Add Button & Voice Button -->
+                <div class="flex gap-3">
+                    <button @click="openAddItemModal"
+                        class="sage-bg text-white flex-1 py-4 rounded-2xl shadow-lg flex justify-center items-center gap-2 font-semibold text-lg hover:brightness-105 active:scale-95 transition-all">
+                        <i data-lucide="plus-circle" class="w-6 h-6"></i> เพิ่มทางแป้นพิมพ์
+                    </button>
+                    <button @click="startVoiceSearch"
+                        class="bg-orange-500 text-white px-5 rounded-2xl shadow-lg hover:brightness-105 active:scale-95 transition-all flex items-center justify-center">
+                        <i data-lucide="mic" class="w-6 h-6"></i>
+                    </button>
+                </div>
             </div>
 
             <!-- Tab: Shopping List (รายการซื้อของ) -->
@@ -457,6 +463,25 @@
             <i data-lucide="check-circle" class="w-5 h-5"></i> {{ toast.message }}
         </div>
 
+        <!-- Voice Control UI (Overlay when listening) -->
+        <div v-if="isListening"
+            class="fixed inset-0 z-[150] flex items-center justify-center bg-sage/95 backdrop-blur-md transition-all">
+            <div class="text-center text-white p-6">
+                <div class="mb-8 relative">
+                    <div class="absolute inset-0 bg-white/20 rounded-full animate-ping"></div>
+                    <div class="bg-white/20 p-10 rounded-full relative">
+                        <i data-lucide="mic" class="w-20 h-20"></i>
+                    </div>
+                </div>
+                <h2 class="text-3xl font-bold mb-3">กำลังฟังลูกพี่อยู่นะ...</h2>
+                <p class="text-lg opacity-90 mb-12">ลองสำเนียงแบบ: "ไข่ไก่ 10 ฟอง ในตู้เย็น"</p>
+                <button @click="isListening = false"
+                    class="bg-white text-sage px-10 py-4 rounded-2xl font-bold text-xl shadow-xl active:scale-95 transition-all">
+                    ปิดไมค์
+                </button>
+            </div>
+        </div>
+
     </div>
 
     <script shadow>
@@ -471,8 +496,8 @@
                 const inventory = ref([]);
                 const shoppingList = ref([]);
                 const settings = ref({ apiUrl: '' });
+                const isListening = ref(false);
                 const isLoading = ref(false);
-
                 const toast = ref({ show: false, message: '' });
 
                 // UI State
@@ -656,6 +681,110 @@
                     syncData();
                 };
 
+                // Voice Methods
+                const startVoiceSearch = () => {
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    if (!SpeechRecognition) {
+                        return alert('เบราว์เซอร์นี้ไม่รองรับการสั่งงานด้วยเสียงค่ะ');
+                    }
+
+                    const recognition = new SpeechRecognition();
+                    recognition.lang = 'th-TH';
+                    recognition.interimResults = false;
+                    recognition.maxAlternatives = 1;
+
+                    recognition.onstart = () => {
+                        isListening.value = true;
+                        refreshIcons();
+                    };
+
+                    recognition.onresult = (event) => {
+                        const text = event.results[0][0].transcript;
+                        isListening.value = false;
+                        handleVoiceCommand(text);
+                    };
+
+                    recognition.onerror = (event) => {
+                        isListening.value = false;
+                        if (event.error !== 'no-speech') {
+                            showToast('เกิดข้อผิดพลาด: ' + event.error);
+                        }
+                    };
+
+                    recognition.onend = () => {
+                        isListening.value = false;
+                    };
+
+                    recognition.start();
+                };
+
+                const handleVoiceCommand = (text) => {
+                    console.log('Voice result:', text);
+                    const parsed = parseThaiInventoryPhrase(text);
+
+                    if (parsed.name) {
+                        modalData.value = {
+                            category: parsed.category || selectedCategory.value,
+                            name: parsed.name,
+                            quantity: parsed.quantity || '1',
+                            expiry: ''
+                        };
+                        editingItem.value = null; // New item mode
+                        showItemModal.value = true;
+                        refreshIcons();
+                        showToast('เข้าใจแล้วจ้า!');
+                    } else {
+                        showToast('ไม่เข้าใจคำสั่งค่ะ ลองอีกทีนะคะ');
+                    }
+                };
+
+                const parseThaiInventoryPhrase = (phrase) => {
+                    let text = phrase.trim();
+                    let category = null;
+                    let quantity = '1';
+                    let name = '';
+
+                    // 1. Clean "เพิ่ม" (Add)
+                    text = text.replace(/^เพิ่ม\s*/, '');
+
+                    // 2. Extract Category
+                    if (text.includes('ตู้เย็น')) {
+                        category = 'fridge';
+                        text = text.replace(/ใน?ตู้เย็น/g, '');
+                    } else if (text.includes('แช่แข็ง') || text.includes('ฟรีซ') || text.includes('แช่เนื้อ')) {
+                        category = 'freezer';
+                        text = text.replace(/ใน?(ตู้แช่แข็ง|ตู้แช่|ช่องฟรีซ|ฟรีซ|แช่เนื้อ)/g, '');
+                    } else if (text.includes('ชั้น') || text.includes('ตู้') || text.includes('แห้ง')) {
+                        category = 'store';
+                        text = text.replace(/ใน?(ชั้นเก็บของ|ชั้น|ตู้เก็บของ|ตู้|ของแห้ง)/g, '');
+                    }
+
+                    // 3. Extract Quantity & Unit
+                    const thaiNumbers = {
+                        'หนึ่ง': '1', 'สอง': '2', 'สาม': '3', 'สี่': '4', 'ห้า': '5',
+                        'หก': '6', 'เจ็ด': '7', 'แปด': '8', 'เก้า': '9', 'สิบ': '10'
+                    };
+
+                    // Pattern: [Item Name] [Number] [Unit]
+                    // We look for a number (digits or Thai words) optionally followed by common units
+                    const qRegex = /(\d+|หนึ่ง|สอง|สาม|สี่|ห้า|หก|เจ็ด|แปด|เก้า|สิบ)\s*([กฟขกชลพ][\u0E00-\u0E7F]*)?$/;
+                    const match = text.match(qRegex);
+
+                    if (match) {
+                        let num = match[1];
+                        if (thaiNumbers[num]) num = thaiNumbers[num];
+                        quantity = num;
+
+                        // Unit is match[2] if exists
+                        const unit = match[2] ? ' ' + match[2] : '';
+                        name = text.replace(match[0], '').trim() + unit;
+                    } else {
+                        name = text.trim();
+                    }
+
+                    return { name, quantity, category };
+                };
+
                 // Settings
                 const openSettings = () => {
                     showSettingsModal.value = true;
@@ -749,7 +878,8 @@
                     formatDate, getCategoryLabel, isExpiring,
                     openAddItemModal, editItem, saveItem, removeItem,
                     addShoppingItem, addToShoppingList, toggleShoppingStatus, removeShoppingItem, clearBoughtItems,
-                    openSettings, saveSettings
+                    openSettings, saveSettings,
+                    isListening, startVoiceSearch
                 };
             }
         }).mount('#app');
