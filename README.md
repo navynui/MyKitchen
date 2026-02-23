@@ -3,36 +3,44 @@
 แอปพลิเคชันจัดการสต็อกสินค้าในครัวแบบง่ายๆ สำหรับคุณแม่ ออกแบบมาเพื่อเน้นการใช้งานบนมือถือ (Mobile-First) และซิงก์ข้อมูลกับ Google Sheets โดยอัตโนมัติ
 
 ## ✨ ฟีเจอร์หลัก
-- **ระบบคลังสินค้า (Inventory):** เช็คของในตู้เย็น ตู้แช่แข็ง และชั้นเก็บของ ได้จากทุกที่
-- **แจ้งเตือนวันหมดอายุ (Expiry Alerts):** แจ้งเตือนรายการที่ใกล้หมดอายุในหน้าแรก
-- **รายการซื้อของ (Shopping List):** จดรายการสิ่งที่ต้องซื้อ และติ๊กถูกเมื่อซื้อเสร็จแล้ว
-- **ซิงก์ข้อมูลอัตโนมัติ (Google Sheets Sync):** ใช้ Google Sheets เป็นฐานข้อมูลหลังบ้าน ทำให้ข้อมูลไม่หายและแก้ไขผ่านตารางได้
+- **ระบบคลังสินค้า (Inventory):** เช็คของในตู้เย็น ตู้แช่แข็ง และชั้นเก็บ ได้จากทุกที่
+- **ระบบซิงก์ 30 วินาที (Batch Sync):** ประมวลผลและส่งข้อมูลแบบเป็นชุดทุก 30 วินาที เพื่อความรวดเร็วและประหยัดแบตเตอรี่
+- **การป้อนคำสั่งด้วยเสียง (Thai Voice Support):** เพิ่มสินค้าด้วยการพูด เช่น "ไข่ไก่ 10 ฟอง ในตู้เย็น"
+- **แจ้งเตือนวันหมดอายุ (Expiry Alerts):** ตรวจสอบและแจ้งเตือนรายการที่ใกล้หมดอายุโดยอัตโนมัติ
+- **ระบบจัดการความขัดแย้ง (Conflict Resolution):** ป้องกันการเขียนทับข้อมูลขณะที่ผู้ใช้กำลังกรอกข้อมูล (Local Priority)
+- **รายการซื้อของ (Shopping List):** จดรายการสิ่งที่ต้องซื้อ พร้อมระบบแนะนำสินค้าที่ใกล้หมดจากคลัง
 
 ## 🛠 เทคโนโลยีที่ใช้
-- **Frontend:** HTML5, Tailwind CSS, Vue.js (CDN)
-- **Icons:** Lucide Icons
-- **Backend:** Google Apps Script (Web App)
+- **Frontend:** HTML5, CSS3, Vue.js 3 (CDN), Tailwind CSS
+- **Icon System:** Custom Inline SVGs (Zero External Library) เพื่อความเสถียรสูงสุด
+- **Backend:** Google Apps Script (Web App API)
 - **Database:** Google Sheets
+- **PWA:** รองรับการติดตั้งลงบนมือถือและใช้งานแบบ Offline ด้วย Service Worker
 
 ## 🚀 การติดตั้งและตั้งค่า (Setup Guide)
 
-### 1. การตั้งค่า Google Sheets
-1. สร้าง Google Sheet ใหม่ และตั้งชื่อแผ่นงาน (Sheet) 2 แผ่นว่า:
-   - `Inventory` (ใส่หัวตารางที่ A1: `id, category, name, quantity, expiry`)
-   - `Shopping` (ใส่หัวตารางที่ A1: `id, name, note, status`)
+### 1. การตั้งค่า Google Sheets หลังบ้าน
+1. สร้าง Google Sheet ใหม่ และตั้งชื่อแผ่นงาน (Sheet) 2 แผ่น:
+   - **Inventory:** หัวตาราง `id, category, name, quantity, unit, status, expiry`
+   - **Shopping:** หัวตาราง `id, name, note, status`
 2. ไปที่เมนู **Extensions -> Apps Script**
 3. คัดลอกโค้ด Apps Script ที่อยู่ในคอมเมนต์ด้านบนสุดของไฟล์ `index.html` ไปวาง
-4. กด **Deploy -> New Deployment** เลือกประเภทเป็น **Web App**
-5. ตั้งค่า **Who has access** เป็น **Anyone** แล้วคัดลอก **Web App URL** ไว้
+4. กด **Deploy -> New Deployment**
+   - **Type:** Web App
+   - **Execute as:** Me
+   - **Who has access:** Anyone
+5. คัดลอก **Web App URL** สำหรับนำไปใส่ในแอป
 
 ### 2. การเชื่อมต่อแอป
-1. เปิดไฟล์ `index.html` หรือเปิดผ่าน GitHub Pages
+1. เปิดไฟล์ `index.html` (หรือเข้าผ่าน URL ของคุณ)
 2. กดที่ไอคอน **ฟันเฟือง (Settings)** มุมขวาบน
-3. วาง **Web App URL** ที่ได้จากขั้นตอนก่อนหน้าแล้วกดบันทึก
+3. วาง **Web App URL** แล้วกดบันทึก
+4. แอปจะเริ่มดึงข้อมูล (Initial Sync) และเปิดระบบ Auto-Polling ทุก 30 วินาที
 
-## 📱 วิธีใช้งานบนมือถือให้เหมือนแอป (Add to Home Screen)
-- **iPhone (Safari):** กดปุ่มแชร์ (ลูกศรชี้ขึ้น) -> เลือก "Add to Home Screen"
-- **Android (Chrome):** กดจุดสามจุดมุมขวาบน -> เลือก "Install app" หรือ "Add to Home screen"
+## 📱 วิธีติดตั้งบนมือถือ (PWA)
+แอปนี้รองรับ **PWA (Progressive Web App)** ทำให้สามารถติดตั้งได้เหมือนแอปจริง:
+- **iOS (Safari):** กดปุ่ม "Share" -> เลือก "Add to Home Screen"
+- **Android (Chrome):** กดปุ่มเมนู (3 จุด) -> เลือก "Install App"
 
 ---
 สร้างด้วยความใส่ใจ เพื่อให้การจัดการครัวเป็นเรื่องสนุกและง่ายสำหรับทุกคนในครอบครัว ❤️
