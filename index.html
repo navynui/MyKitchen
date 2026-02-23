@@ -576,6 +576,7 @@
                 const settings = ref({ apiUrl: '' });
                 const isListening = ref(false);
                 const isLoading = ref(false);
+                const isLucideReady = ref(!!window.lucide);
                 const lastSyncTime = ref('');
                 const toast = ref({ show: false, message: '' });
 
@@ -645,9 +646,16 @@
 
                 // Methods
                 const renderIcon = (name, customClass = '') => {
+                    // Tell Vue to re-render icons when this value changes
+                    const _ready = isLucideReady.value;
                     try {
-                        if (window.lucide && window.lucide.icons[name]) {
-                            return window.lucide.icons[name].toSvg({
+                        if (!window.lucide) return '';
+                        // Convert kebab-case to PascalCase (e.g. plus-circle -> PlusCircle)
+                        const pascalName = name.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('');
+                        const iconObj = window.lucide[pascalName] || (window.lucide.icons ? window.lucide.icons[name] : null);
+
+                        if (iconObj && typeof iconObj.toSvg === 'function') {
+                            return iconObj.toSvg({
                                 class: customClass,
                                 'stroke-width': 2.5
                             });
@@ -655,7 +663,7 @@
                     } catch (e) {
                         console.warn('Icon error:', name);
                     }
-                    return `<span class="w-5 h-5 bg-gray-200 rounded"></span>`; // Fallback
+                    return '';
                 };
 
                 const refreshIcons = () => {
@@ -1026,6 +1034,18 @@
                     if (savedTab) activeTab.value = savedTab;
 
                     fetchData();
+
+                    // Wait for Lucide to be ready
+                    if (!window.lucide) {
+                        const interval = setInterval(() => {
+                            if (window.lucide) {
+                                isLucideReady.value = true;
+                                clearInterval(interval);
+                            }
+                        }, 100);
+                    } else {
+                        isLucideReady.value = true;
+                    }
 
                     // Background Auto-Sync logic
                     let pollInterval = null;
