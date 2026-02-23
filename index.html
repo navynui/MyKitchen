@@ -735,7 +735,6 @@
                     showItemModal.value = false;
                     syncData();
                     showToast('บันทึกสำเร็จแล้ว');
-                    refreshIcons(); // Force refresh icons for new items
                 };
 
                 const removeItem = (id) => {
@@ -985,7 +984,6 @@
                         if (force) alert('ไม่สามารถดึงข้อมูลได้ กรุณาตรวจสอบ URL หรือการตั้งค่า Apps Script');
                     } finally {
                         isLoading.value = false;
-                        refreshIcons();
                     }
                 };
 
