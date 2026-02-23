@@ -987,7 +987,13 @@
                         const url = settings.value.apiUrl + (settings.value.apiUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
                         const response = await fetch(url);
                         const data = await response.json();
-                        if (data.inventory) inventory.value = data.inventory;
+                        if (data.inventory) {
+                            // Sanitize dates to yyyy-MM-dd to avoid browser warnings in date inputs
+                            inventory.value = data.inventory.map(item => ({
+                                ...item,
+                                expiry: (item.expiry && item.expiry.includes('T')) ? item.expiry.split('T')[0] : item.expiry
+                            }));
+                        }
                         if (data.shopping) shoppingList.value = data.shopping;
 
                         localStorage.setItem('myKitchen_inventory', JSON.stringify(inventory.value));
@@ -1009,6 +1015,7 @@
                     localStorage.setItem('myKitchen_inventory', JSON.stringify(inventory.value));
                     localStorage.setItem('myKitchen_shopping', JSON.stringify(shoppingList.value));
                     hasPendingChanges.value = true;
+                    localStorage.setItem('myKitchen_pendingSync', 'true');
 
                     if (immediate) {
                         pushUpdates();
@@ -1035,6 +1042,7 @@
                         });
 
                         hasPendingChanges.value = false;
+                        localStorage.removeItem('myKitchen_pendingSync');
                         const now = new Date();
                         lastSyncTime.value = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
                     } catch (e) {
@@ -1057,6 +1065,9 @@
 
                     const savedTab = localStorage.getItem('myKitchen_activeTab');
                     if (savedTab) activeTab.value = savedTab;
+
+                    const savedPending = localStorage.getItem('myKitchen_pendingSync');
+                    if (savedPending) hasPendingChanges.value = true;
 
                     fetchData();
 
