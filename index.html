@@ -107,7 +107,7 @@
     
     1. สร้าง Google Sheet ใหม่ และตั้งชื่อว่า "MyKitchen_DB"
     2. ตั้งชื่อ Sheet แรกว่า "Inventory" และใส่ Header ดังนี้:
-       A1: id, B1: category, C1: name, D1: quantity, E1: unit, F1: status, G1: expiry
+       A1: id, B1: category, C1: shelf, D1: name, E1: packaging, F1: quantity, G1: status, H1: expiry, I1: note
     3. ตั้งชื่อ Sheet ที่สองว่า "Shopping" และใส่ Header ดังนี้:
        A1: id, B1: name, C1: note, D1: status
     
@@ -122,7 +122,7 @@
       const shoppingSheet = ss.getSheetByName("Shopping");
       
       const inventory = inventorySheet.getDataRange().getValues().slice(1).map(r => ({
-        id: r[0], category: r[1], name: r[2], quantity: r[3], unit: r[4], status: r[5], expiry: r[6] instanceof Date ? r[6].toISOString().split('T')[0] : r[6]
+        id: r[0], category: r[1], shelf: r[2], name: r[3], packaging: r[4], quantity: r[5], status: r[6], expiry: r[7] instanceof Date ? r[7].toISOString().split('T')[0] : r[7], note: r[8]
       }));
       
       const shopping = shoppingSheet.getDataRange().getValues().slice(1).map(r => ({
@@ -141,16 +141,17 @@
       if (action === "updateInventory") {
         const sheet = ss.getSheetByName("Inventory");
         sheet.clearContents();
-        sheet.appendRow(["id", "category", "name", "quantity", "unit", "status", "expiry"]);
+        // New Schema: id | category | shelf | name | packaging | quantity | status | expiry | note
+        sheet.appendRow(["id", "category", "shelf", "name", "packaging", "quantity", "status", "expiry", "note"]);
         data.items.forEach(item => {
-          sheet.appendRow([item.id, item.category, item.name, item.quantity, item.unit, item.status, item.expiry]);
+          sheet.appendRow([item.id, item.category, item.shelf || '', item.name, item.packaging || '', item.quantity || '', item.status || 'good', item.expiry || '', item.note || '']);
         });
       } else if (action === "updateShopping") {
         const sheet = ss.getSheetByName("Shopping");
         sheet.clearContents();
         sheet.appendRow(["id", "name", "note", "status"]);
         data.items.forEach(item => {
-          sheet.appendRow([item.id, item.name, item.note, item.status]);
+          sheet.appendRow([item.id, item.name, item.note || '', item.status]);
         });
       }
       
@@ -246,7 +247,7 @@
                             <div>
                                 <p class="font-medium text-gray-900">{{ item.name }}</p>
                                 <p v-if="item.status === 'out'" class="text-xs text-red-600 font-medium">ของหมดแล้ว!</p>
-                                <p v-else class="text-xs text-gray-500">เหลือเพียง: {{ item.quantity }} {{ item.unit }}
+                                <p v-else class="text-xs text-gray-500">เหลือเพียง: {{ item.quantity }} {{ item.packaging }}
                                 </p>
                             </div>
                             <button @click="moveToShopping(item)"
@@ -300,23 +301,25 @@
                                     <span v-html="renderIcon('calendar', 'w-3 h-3')"></span> {{
                                     formatDate(item.expiry) }}
                                 </span>
+                                <span v-if="item.note" class="text-[10px] font-semibold px-2 py-0.5 bg-yellow-100 rounded-lg text-yellow-700">
+                                    {{ item.note }}
+                                </span>
+                                <span v-if="item.shelf" class="text-[10px] font-semibold px-2 py-0.5 bg-blue-100 rounded-lg text-blue-700">
+                                    ชั้น {{ item.shelf }}
+                                </span>
                             </div>
                         </div>
                         <div class="flex items-center gap-1">
+                            <button @click="cycleStatus(item)"
+                                class="w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all active:scale-95 shadow-sm"
+                                :class="item.status === 'shopping' ? 'bg-orange-500 border-orange-500 text-white' : (item.status === 'good' ? 'border-green-500 bg-green-50 text-green-600' : (item.status === 'low' ? 'border-yellow-500 bg-yellow-50 text-yellow-600' : 'border-red-500 bg-red-50 text-red-600'))">
+                                <span v-if="item.status === 'shopping'" v-html="renderIcon('shopping-cart', 'w-5 h-5')"></span>
+                                <span v-else v-html="renderIcon(item.status === 'good' ? 'check' : (item.status === 'low' ? 'alert-triangle' : 'shopping-bag'), 'w-5 h-5')"></span>
+                            </button>
                             <button @click="editItem(item)" class="p-2 text-gray-400 hover:text-sage transition-colors">
                                 <span v-html="renderIcon('edit-3', 'w-5 h-5')"></span>
                             </button>
-                            <button @click="cycleStatus(item)" :key="item.id + (item.status || 'good')"
-                                class="w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-95 shadow-sm"
-                                :class="{
-                                    'bg-green-100 text-green-600': (item.status || 'good') === 'good',
-                                    'bg-yellow-100 text-yellow-600': item.status === 'low',
-                                    'bg-red-100 text-red-600': item.status === 'out',
-                                    'bg-orange-500 text-white shadow-orange-200': item.status === 'shopping'
-                                }">
-                                <span
-                                    v-html="renderIcon((item.status || 'good') === 'good' ? 'check-circle' : (item.status === 'low' ? 'alert-triangle' : (item.status === 'out' ? 'x-circle' : 'shopping-cart')), 'w-5 h-5')"></span>
-                            </button>
+                            
                         </div>
                     </div>
                 </div>
@@ -457,37 +460,50 @@
                             class="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-sage"
                             placeholder="เช่น นมจืด, ไข่ไก่ 10 ฟอง">
                     </div>
-                    <div class="grid grid-cols-3 gap-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-500 mb-1">ชั้นที่ (Shelf)</label>
+                            <input v-model="modalData.shelf" type="text"
+                                class="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-sage text-center"
+                                placeholder="เช่น 1, 2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-500 mb-1">บรรจุภัณฑ์ (Packaging)</label>
+                            <input v-model="modalData.packaging" type="text"
+                                class="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-sage text-center"
+                                placeholder="ตย. ถุง, กก.">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-500 mb-1">สถานะ</label>
                             <div class="flex gap-1">
                                 <button v-for="s in ['good', 'low', 'out']" :key="s" @click="modalData.status = s"
-                                    class="w-full h-12 rounded-xl border flex items-center justify-center transition-all"
+                                    class="flex-1 h-12 rounded-xl border flex items-center justify-center transition-all"
                                     :class="modalData.status === s ? 
                                         (s === 'good' ? 'bg-green-500 text-white border-green-500' : s === 'low' ? 'bg-yellow-500 text-white border-yellow-500' : 'bg-red-500 text-white border-red-500') : 
                                         'bg-gray-50 text-gray-300 border-transparent'">
-                                    <span
-                                        v-html="renderIcon(s === 'good' ? 'check-circle' : (s === 'low' ? 'alert-triangle' : 'x-circle'), 'w-5 h-5')"></span>
+                                    <span v-html="renderIcon(s === 'good' ? 'check-circle' : (s === 'low' ? 'alert-triangle' : 'x-circle'), 'w-5 h-5')"></span>
                                 </button>
                             </div>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-500 mb-1">จำนวน</label>
+                            <label class="block text-sm font-medium text-gray-500 mb-1">จำนวน (Quantity)</label>
                             <input v-model="modalData.quantity" type="text"
-                                class="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-sage text-center"
+                                class="w-full p-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-sage text-center h-12"
                                 placeholder="1">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-500 mb-1">หน่วย</label>
-                            <input v-model="modalData.unit" type="text"
-                                class="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-sage text-center"
-                                placeholder="ชิ้น">
                         </div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-500 mb-1">วันหมดอายุ</label>
                         <input v-model="modalData.expiry" type="date"
                             class="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-sage px-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-500 mb-1">หมายเหตุ (Note)</label>
+                        <input v-model="modalData.note" type="text"
+                            class="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-sage"
+                            placeholder="ระบุหมายเหตุ เช่น ไม่เติม">
                     </div>
 
                     <button @click="saveItem"
@@ -580,7 +596,85 @@
                 const activeTab = ref('home');
                 const selectedCategory = ref('fridge');
                 const searchQuery = ref('');
-                const inventory = ref([]);
+                
+const initialData = [
+  { id: '1001', category: 'fridge', shelf: '', name: 'กะปิคั้ว', packaging: '...ถุง', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '1002', category: 'fridge', shelf: '', name: 'เนื้อแฮคกั๊ง', packaging: '1 เสริฟ', quantity: '2', status: 'good', expiry: '', note: '' },
+  { id: '1003', category: 'fridge', shelf: '', name: 'น้ำกะทิ', packaging: '1 เสริฟ', quantity: '1', status: 'good', expiry: '', note: '(<-ถ้วยเล็ก)' },
+  { id: '1004', category: 'fridge', shelf: '', name: 'ไอศกรีมมิตร', packaging: '...แท่ง', quantity: '6', status: 'good', expiry: '', note: '' },
+  { id: '1005', category: 'fridge', shelf: '', name: 'Ice Stick', packaging: '...ถุง', quantity: '3', status: 'good', expiry: '', note: 'ไม่เติม 3' },
+  { id: '1006', category: 'fridge', shelf: '', name: 'เฟรนช์ฟรายส์', packaging: '2 กก.', quantity: '2', status: 'good', expiry: '', note: 'ไม่เติม 1' },
+  { id: '1007', category: 'fridge', shelf: '', name: 'มันบดชีส', packaging: '1 กก.', quantity: '1', status: 'good', expiry: '', note: 'ไม่เติม' },
+  { id: '1008', category: 'fridge', shelf: '', name: 'อกไก่ทอด', packaging: '1 กก.', quantity: '1', status: 'good', expiry: '', note: 'ไม่เติม' },
+  { id: '1009', category: 'fridge', shelf: '', name: 'ไก่ป๊อบ', packaging: '1 กก.', quantity: '1', status: 'good', expiry: '', note: 'ไม่เติม' },
+  { id: '1010', category: 'fridge', shelf: '', name: 'ไก่แซ่บ', packaging: '...กล่อง', quantity: '6', status: 'good', expiry: '', note: '' },
+  { id: '1011', category: 'fridge', shelf: '', name: 'แฟล็กซีดบด', packaging: '100 ก.', quantity: '1', status: 'good', expiry: '', note: 'ไม่เติม' },
+  { id: '1012', category: 'fridge', shelf: '', name: 'ครัวซอง', packaging: '...ชิ้น', quantity: '3', status: 'good', expiry: '', note: '' },
+  { id: '1013', category: 'fridge', shelf: '', name: 'แซนวิชแฮมชีส', packaging: '...ชิ้น', quantity: '6', status: 'good', expiry: '', note: '' },
+  { id: '1014', category: 'fridge', shelf: '', name: 'มินิพิซซ่าสัปปะรด', packaging: '...ชิ้น', quantity: '9', status: 'good', expiry: '', note: '' },
+  { id: '1015', category: 'fridge', shelf: '', name: 'เส้นบะหมี่', packaging: '4 เสริฟ', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '2001', category: 'freezer', shelf: '5', name: 'น้ำจิ้มข้าวมันไก่', packaging: '500 ก.', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '2002', category: 'freezer', shelf: '5', name: 'แครอทเต๋า', packaging: '1 กก.', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '2003', category: 'freezer', shelf: '5', name: 'ซอสใบกะเพรา', packaging: '3 เสริฟ', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '2004', category: 'freezer', shelf: '4', name: 'เห็ดฟางผ่า', packaging: '3 เสริฟ', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '2005', category: 'freezer', shelf: '4', name: 'ข้าวโพดหวานเม็ด', packaging: '170 ก.', quantity: '2', status: 'good', expiry: '', note: '' },
+  { id: '2006', category: 'freezer', shelf: '4', name: 'ขนมจีบกุ้ง/หมู', packaging: '5-6 ชิ้น', quantity: '2', status: 'good', expiry: '', note: '' },
+  { id: '2007', category: 'freezer', shelf: '4', name: 'น้ำซุปไก่', packaging: '500 ก.', quantity: '1', status: 'good', expiry: '', note: 'ไม่เติม' },
+  { id: '2008', category: 'freezer', shelf: '4', name: 'ข้าวซอยเส้น', packaging: '1 เสริฟ', quantity: '6', status: 'good', expiry: '', note: '' },
+  { id: '2009', category: 'freezer', shelf: '4', name: 'ฟักทองเชื่อม', packaging: '1 เสริฟ', quantity: '8', status: 'good', expiry: '', note: '' },
+  { id: '2010', category: 'freezer', shelf: '4', name: 'สับปะรดเชื่อม', packaging: '1 เสริฟ', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '2011', category: 'freezer', shelf: '4', name: 'ลูกชิ้น', packaging: '1 เสริฟ', quantity: '4', status: 'good', expiry: '', note: '' },
+  { id: '2012', category: 'freezer', shelf: '4', name: 'ไก่กรอบ', packaging: '3 เสริฟ', quantity: '2', status: 'good', expiry: '', note: '' },
+  { id: '2013', category: 'freezer', shelf: '4', name: 'ใบกะเพราลวก', packaging: '2 เสริฟ', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '2014', category: 'freezer', shelf: '4', name: 'ผักกวางตุ้งลวก', packaging: '1 เสริฟ', quantity: '4', status: 'good', expiry: '', note: '' },
+  { id: '2015', category: 'freezer', shelf: '3', name: 'ผักกาดขาวต้ม', packaging: '2 เสริฟ', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '2016', category: 'freezer', shelf: '3', name: 'ซุปเต้าหู้', packaging: '2 เสริฟ', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '2017', category: 'freezer', shelf: '3', name: 'ซุปเห็ดหอม', packaging: '2 เสริฟ', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '2018', category: 'freezer', shelf: '3', name: 'หนังหมู', packaging: '2 เสริฟ', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '2019', category: 'freezer', shelf: '3', name: 'เมล็ดควินัว', packaging: '85 ก.', quantity: '6', status: 'good', expiry: '', note: '' },
+  { id: '2020', category: 'freezer', shelf: '3', name: 'เม็ดมะม่วง', packaging: '75 ก.', quantity: '5', status: 'good', expiry: '', note: '' },
+  { id: '2021', category: 'freezer', shelf: '3', name: 'กระเทียมจีนปอก', packaging: '500 ก.', quantity: '2', status: 'good', expiry: '', note: 'ไม่เติม 1' },
+  { id: '2022', category: 'freezer', shelf: '3', name: 'แครนเบอร์รี', packaging: '75 ก.', quantity: '2', status: 'good', expiry: '', note: '' },
+  { id: '2023', category: 'freezer', shelf: '3', name: 'ซุปต้มยำ (ข่า, ตะไคร้, ใบมะกรูด)', packaging: '1 เสริฟ', quantity: '6', status: 'good', expiry: '', note: '' },
+  { id: '2024', category: 'freezer', shelf: '3', name: 'กะหล่ำปลี', packaging: '3 ผล', quantity: '2', status: 'good', expiry: '', note: '' },
+  { id: '2025', category: 'freezer', shelf: '3', name: 'เมล็ดทานตะวันอบเกลือ', packaging: '1 กก.', quantity: '1', status: 'good', expiry: '', note: 'ไม่เติม' },
+  { id: '2026', category: 'freezer', shelf: '3', name: 'ผักโขมลวกต้ม/ต้ม', packaging: '...ถุง', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '2027', category: 'freezer', shelf: '2', name: 'หมูบดเจ', packaging: '200 ก.', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '2028', category: 'freezer', shelf: '2', name: 'หมูสับ/หมูเด้ง/หมูชาชู', packaging: '170 ก.', quantity: '2', status: 'good', expiry: '', note: '' },
+  { id: '2029', category: 'freezer', shelf: '2', name: 'หมูสไลด์ชาบู 20%', packaging: '1 กก.', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '2030', category: 'freezer', shelf: '2', name: 'หมูสับลวกหมู', packaging: '1 กก.', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '2031', category: 'freezer', shelf: '2', name: 'หมูสับกระดูก (น้ำซุปเด้ง/แกงจืด)', packaging: '1 กก.', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '2032', category: 'freezer', shelf: '2', name: 'หมูชิ้นนุ่ม', packaging: '1 กก.', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '2033', category: 'freezer', shelf: '2', name: 'หมูตุ๋นน้ำโค้ก', packaging: '1 กก.', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '2034', category: 'freezer', shelf: '2', name: 'หมูสับเจ', packaging: '1 กก.', quantity: '2', status: 'good', expiry: '', note: '' },
+  { id: '2035', category: 'freezer', shelf: '2', name: 'ลูกชิ้นหมู', packaging: '1 กก.', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '2036', category: 'freezer', shelf: '2', name: 'ซูริมิ', packaging: '500 ก.', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '2037', category: 'freezer', shelf: '2', name: 'อกไก่หั่นบาง', packaging: '2 เสริฟ', quantity: '2', status: 'good', expiry: '', note: '' },
+  { id: '2038', category: 'freezer', shelf: '2', name: 'ขาหมูพะโล้ตุ๋น', packaging: '2 เสริฟ', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '2039', category: 'freezer', shelf: '2', name: 'ไส้กรอกไก่รมควัน', packaging: '2 เสริฟ', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '2040', category: 'freezer', shelf: '2', name: 'อกไก่พริกไทยดำ', packaging: '1 กก.', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '2041', category: 'freezer', shelf: '2', name: 'อกไก่หั่นชิ้น', packaging: '200 ก.', quantity: '5', status: 'good', expiry: '', note: '' },
+  { id: '2042', category: 'freezer', shelf: '2', name: 'ไก่ยอ', packaging: '1 กก.', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '2043', category: 'freezer', shelf: '1', name: 'พริกแกงเผ็ด', packaging: '2 เสริฟ', quantity: '4', status: 'good', expiry: '', note: 'ไม่เติม 1' },
+  { id: '2044', category: 'freezer', shelf: '1', name: 'พริกแกงเขียวหวาน', packaging: '...ถุง', quantity: '3', status: 'good', expiry: '', note: '' },
+  { id: '2045', category: 'freezer', shelf: '1', name: 'ทอดมันกุ้ง', packaging: '2 เสริฟ', quantity: '2', status: 'good', expiry: '', note: '' },
+  { id: '2046', category: 'freezer', shelf: '1', name: 'น้ำเชื่อมสำเร็จรูป', packaging: '...ถุง', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '2047', category: 'freezer', shelf: '1', name: 'แซลมอน+พุงแซลมอน', packaging: '140 ก.', quantity: '6', status: 'good', expiry: '', note: '' },
+  { id: '2048', category: 'freezer', shelf: '1', name: 'แมงกะพรุน', packaging: '100 ก.', quantity: '2', status: 'good', expiry: '', note: '' },
+  { id: '2049', category: 'freezer', shelf: '1', name: 'ลูกชิ้นปลา', packaging: '150 ก.', quantity: '3', status: 'good', expiry: '', note: '' },
+  { id: '2050', category: 'freezer', shelf: '1', name: 'พุงปลา', packaging: '1 เสริฟ', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '3001', category: 'freezer', shelf: 'ฝาประตู', name: 'รากผักชี', packaging: '...ราก', quantity: '7', status: 'good', expiry: '', note: '' },
+  { id: '3002', category: 'freezer', shelf: 'ฝาประตู', name: 'รากขึ้นฉ่าย', packaging: '...ราก', quantity: '5', status: 'good', expiry: '', note: '' },
+  { id: '3003', category: 'freezer', shelf: 'ฝาประตู', name: 'กระชายอ่อน', packaging: '1 เสริฟ', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '3004', category: 'freezer', shelf: 'ฝาประตู', name: 'โรสแมรี่สด', packaging: '1 เสริฟ', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '3005', category: 'freezer', shelf: 'ฝาประตู', name: 'พริกไทยสด', packaging: '1 เสริฟ', quantity: '4', status: 'good', expiry: '', note: '' },
+  { id: '3006', category: 'freezer', shelf: 'ฝาประตู', name: 'หอมแดง', packaging: '1 เสริฟ', quantity: '2', status: 'good', expiry: '', note: '' },
+  { id: '3007', category: 'freezer', shelf: 'ฝาประตู', name: 'พริกสดซอย', packaging: '...ถุง', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '3008', category: 'freezer', shelf: 'ฝาประตู', name: 'พริกแดง', packaging: '...ถุง', quantity: '1', status: 'good', expiry: '', note: '' },
+  { id: '3009', category: 'freezer', shelf: 'ฝาประตู', name: 'พริกเขียว', packaging: '...ถุง', quantity: '1', status: 'good', expiry: '', note: '' }
+  { id: '3010', category: 'freezer', shelf: 'ฝาประตู', name: 'ไชโป๊ท่อน', packaging: '1 เสริฟ', quantity: '1', status: 'good', expiry: '', note: '' }
+];
+const inventory = ref(initialData);
                 const shoppingList = ref([]);
                 const settings = ref({ apiUrl: '' });
                 const isListening = ref(false);
@@ -618,13 +712,14 @@
                 const showItemModal = ref(false);
                 const showSettingsModal = ref(false);
                 const editingItem = ref(null);
-                const modalData = ref({ category: 'fridge', name: '', quantity: '', unit: '', status: 'good', expiry: '' });
+                const modalData = ref({ category: 'fridge', shelf: '', name: '', packaging: '', quantity: '1', status: 'good', expiry: '', note: '' });
                 const newShoppingItem = ref('');
 
                 const categories = [
                     { id: 'fridge', label: 'ตู้เย็น' },
                     { id: 'freezer', label: 'ตู้แช่แข็ง' },
                     { id: 'store', label: 'ชั้นเก็บ' },
+                    { id: 'market', label: 'ตลาดสด' },
                     { id: 'all', label: 'รวม' }
                 ];
 
@@ -642,12 +737,26 @@
                         items = items.filter(item => item.name.toLowerCase().includes(searchQuery.value.toLowerCase()));
                     }
                     return items.sort((a, b) => {
-                        // If no expiry, sort by most recent ID (newest first)
+                        // Sort by shelf first (treating missing shelf or empty as 0 or last)
+                        const getShelfVal = (s) => {
+                            if (!s) return Number.MAX_SAFE_INTEGER;
+                            let n = parseInt(s);
+                            return isNaN(n) ? s : n;
+                        };
+                        const sa = getShelfVal(a.shelf);
+                        const sb = getShelfVal(b.shelf);
+                        if (sa !== sb) {
+                            if (typeof sa === 'string' && typeof sb === 'string') return sa.localeCompare(sb);
+                            if (typeof sa === 'string') return 1; // string shelves go after numbers
+                            if (typeof sb === 'string') return -1;
+                            return sa - sb;
+                        }
+                        
+                        // Then by expiry
                         if (!a.expiry && !b.expiry) return b.id - a.id;
                         if (!a.expiry) return 1;
                         if (!b.expiry) return -1;
 
-                        // Valid date compare
                         const dateA = new Date(a.expiry);
                         const dateB = new Date(b.expiry);
                         if (isNaN(dateA)) return 1;
@@ -673,7 +782,7 @@
                 });
 
                 const suggestedItems = computed(() => {
-                    return inventory.value.filter(item => (item.status === 'low' || item.status === 'out'));
+                    return inventory.value.filter(item => item.status === 'low' || item.status === 'out');
                 });
 
                 const shoppingCount = computed(() => shoppingList.value.filter(i => i.status !== 'done').length);
@@ -717,7 +826,7 @@
                 const openAddItemModal = () => {
                     editingItem.value = null;
                     const defaultCat = selectedCategory.value === 'all' ? 'fridge' : selectedCategory.value;
-                    modalData.value = { category: defaultCat, name: '', quantity: '1', unit: '', status: 'good', expiry: '' };
+                    modalData.value = { category: defaultCat, shelf: '', name: '', packaging: '', quantity: '1', status: 'good', expiry: '', note: '' };
                     showItemModal.value = true;
                 };
 
@@ -1129,12 +1238,12 @@
                     showItemModal, showSettingsModal, editingItem, modalData, newShoppingItem,
                     currentTabLabel, settings, toast, isLoading,
                     formatDate, getCategoryLabel, isExpiring,
-                    openAddItemModal, editItem, saveItem, removeItem,
+                    openAddItemModal, editItem, saveItem, removeItem, cycleStatus,
                     addShoppingItem, addToShoppingList, toggleShoppingStatus, removeShoppingItem, clearBoughtItems,
                     openSettings, saveSettings,
                     isListening, startVoiceSearch,
                     lastSyncTime,
-                    cycleStatus, addAllLowToShopping, moveToShopping,
+                    addAllLowToShopping, moveToShopping,
                     renderIcon, pushUpdates, fetchData, hasPendingChanges, isSyncing
                 };
             }
