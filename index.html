@@ -676,7 +676,7 @@ const initialData = [
 ];
 const inventory = ref(initialData);
                 const shoppingList = ref([]);
-                const settings = ref({ apiUrl: '' });
+                const settings = ref({ apiUrl: 'https://script.google.com/macros/s/AKfycbxVh5kCPX3i-BlPRPCtLhPNnZoInxZhcD8u25ySOZ26C6mQS7acFezchns0BUhofDtLGA/exec' });
                 const isListening = ref(false);
                 const isLoading = ref(false);
                 const isSyncing = ref(false);
@@ -1169,7 +1169,11 @@ const inventory = ref(initialData);
                 // Lifecycle
                 onMounted(() => {
                     const savedSettings = localStorage.getItem('myKitchen_settings');
-                    if (savedSettings) settings.value = JSON.parse(savedSettings);
+                    if (savedSettings) {
+                        let parsed = JSON.parse(savedSettings);
+                        if (!parsed.apiUrl) parsed.apiUrl = settings.value.apiUrl;
+                        settings.value = parsed;
+                    }
 
                     const savedInv = localStorage.getItem('myKitchen_inventory');
                     if (savedInv) inventory.value = JSON.parse(savedInv);
