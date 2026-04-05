@@ -21,7 +21,7 @@
 
 ### 1. การตั้งค่า Google Sheets หลังบ้าน
 1. สร้าง Google Sheet ใหม่ และตั้งชื่อแผ่นงาน (Sheet) 2 แผ่น:
-   - **Inventory:** หัวตาราง `id, category, name, quantity, unit, status, expiry`
+   - **Inventory:** หัวตาราง `id, category, shelf, name, packaging, quantity, status, expiry, note`
    - **Shopping:** หัวตาราง `id, name, note, status`
 2. ไปที่เมนู **Extensions -> Apps Script**
 3. คัดลอกโค้ด Apps Script ที่อยู่ในคอมเมนต์ด้านบนสุดของไฟล์ `index.html` ไปวาง
