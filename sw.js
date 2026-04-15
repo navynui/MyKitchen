@@ -1,5 +1,5 @@
 // Service Worker for My Kitchen (PWA)
-const CACHE_NAME = 'my-kitchen-v3';
+const CACHE_NAME = 'my-kitchen-v4';
 const urlsToCache = [
   './',
   './index.html',

@@ -492,12 +492,14 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-500 mb-1">จำนวน (Quantity)</label>
-                            <div class="flex items-center gap-1 bg-gray-50 rounded-2xl">
-                                <button @click="decrementQty" class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-sage font-bold text-xl active:scale-95 transition-all">-</button>
+                            <div class="flex items-center gap-2 bg-gray-50 rounded-2xl p-1">
+                                <div class="flex gap-1">
+                                    <button @click="decrementQty" class="w-12 h-12 flex items-center justify-center bg-white rounded-xl shadow-sm text-gray-400 hover:text-sage font-bold text-2xl active:scale-95 transition-all">-</button>
+                                    <button @click="incrementQty" class="w-12 h-12 flex items-center justify-center bg-white rounded-xl shadow-sm text-gray-400 hover:text-sage font-bold text-2xl active:scale-95 transition-all">+</button>
+                                </div>
                                 <input v-model="modalData.quantity" type="text"
-                                    class="flex-1 p-2 bg-transparent border-none focus:ring-0 text-center h-12"
+                                    class="w-14 p-2 bg-transparent border-none focus:ring-0 text-center h-12 font-semibold text-lg"
                                     placeholder="1">
-                                <button @click="incrementQty" class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-sage font-bold text-xl active:scale-95 transition-all">+</button>
                             </div>
                         </div>
                     </div>
